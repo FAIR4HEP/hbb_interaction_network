@@ -1,5 +1,4 @@
-### Data class and associated helper methods
-
+#  Data class and associated helper methods
 import numpy as np
 import h5py
 import os
@@ -15,15 +14,15 @@ class FilePreloader(Thread):
         self.n_concurrent = n_ahead
         self.files_list = files_list
         self.file_open = file_open
-        self.loaded = {}  ## a dict of the loaded objects
+        self.loaded = {}  # a dict of the loaded objects
         self.should_stop = False
 
     def getFile(self, name):
-        ## locks until the file is loaded, then return the handle
+        # locks until the file is loaded, then return the handle
         return self.loaded.setdefault(name, self.file_open(name))
 
     def closeFile(self, name):
-        ## close the file and
+        # close the file and
         if name in self.loaded:
             self.loaded.pop(name).close()
 
@@ -79,13 +78,13 @@ class Data(object):
         self.caching_directory = cache
 
     def set_file_names(self, file_names):
-        ## hook to copy data in /dev/shm
+        # hook to copy data in /dev/shm
         relocated = []
         if self.caching_directory:
             goes_to = self.caching_directory
             goes_to += str(os.getpid())
             os.system("mkdir %s " % goes_to)
-            os.system("rm %s/* -f" % goes_to)  ## clean first if anything
+            os.system("rm %s/* -f" % goes_to)  # clean first if anything
             for fn in file_names:
                 relocate = goes_to + "/" + fn.split("/")[-1]
                 if not os.path.isfile(relocate):
@@ -94,7 +93,7 @@ class Data(object):
                         relocated.append(relocate)
                     else:
                         print("was enable to copy the file", fn, "to", relocate)
-                        relocated.append(fn)  ## use the initial one
+                        relocated.append(fn)  # use the initial one
                 else:
                     relocated.append(relocate)
 
@@ -110,35 +109,15 @@ class Data(object):
             try:
                 for B in self.generate_data():
                     yield B
-            except StopIteration as si:
+            except StopIteration:
                 print("start over generator loop")
 
     def inf_generate_data_keras(self):
         while True:
             try:
-                for B, C, D in self.generate_data():
+                for B, C, _ in self.generate_data():
                     yield [B[2].swapaxes(1, 2), B[3].swapaxes(1, 2)], C
-            except StopIteration as si:
-                print("start over generator loop")
-
-    def inf_generate_data_keras_db(self):
-        while True:
-            try:
-                for B, C, D in self.generate_data():
-                    yield [
-                        B[0],
-                        B[2].swapaxes(1, 2)[:, :, 22:],
-                        B[3].swapaxes(1, 2)[:, :, 11:13],
-                    ], C
-            except StopIteration as si:
-                print("start over generator loop")
-
-    def inf_generate_data_keras_cpf(self):
-        while True:
-            try:
-                for B, C, D in self.generate_data():
-                    yield [B[2].swapaxes(1, 2)], C
-            except StopIteration as si:
+            except StopIteration:
                 print("start over generator loop")
 
     def generate_data(self):
@@ -256,7 +235,7 @@ class H5Data(Data):
         self.features_name = features_name
         self.labels_name = labels_name
         self.spectators_name = spectators_name
-        ## initialize the data-preloader
+        # initialize the data-preloader
         self.fpl = None
         if preloading:
             self.fpl = FilePreloader(

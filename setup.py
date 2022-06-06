@@ -1,7 +1,7 @@
 from setuptools import find_packages, setup
 
 setup(
-    name='hbb_interaction_network',
+    name='src',
     packages=find_packages(),
     version='0.1.0',
     description='Hbb interaction network',

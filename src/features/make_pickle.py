@@ -1,53 +1,57 @@
 import matplotlib as mpl
-mpl.use('agg')
-import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.metrics import roc_curve, roc_auc_score, accuracy_score
-import torch
+
+mpl.use("agg")
 import glob
-import tqdm
-import matplotlib.pyplot as plt
-from matplotlib import rcParams
-from matplotlib import rc
-import pandas as pd
-import sys
 import imp
+import sys
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import torch
+import tqdm
+from matplotlib import rc, rcParams
+from sklearn.metrics import accuracy_score, roc_auc_score, roc_curve
+
 try:
-    imp.find_module('setGPU')
+    imp.find_module("setGPU")
     import setGPU
 except ImportError:
-    pass    
+    pass
 import argparse
 import os
 
-if os.path.isdir('/bigdata/shared/BumbleB'):
-    save_path = '/bigdata/shared/BumbleB/convert_20181121_ak8_80x_deepDoubleB_db_pf_cpf_sv_dl4jets_test/'
-    train_path = '/bigdata/shared/BumbleB/convert_20181121_ak8_80x_deepDoubleB_db_pf_cpf_sv_dl4jets_train_val/'
-elif os.path.isdir('/eos/user/w/woodson/IN'):
-    save_path = '/eos/user/w/woodson/IN/convert_20181121_ak8_80x_deepDoubleB_db_pf_cpf_sv_dl4jets_test/'
-    train_path = '/eos/user/w/woodson/IN/convert_20181121_ak8_80x_deepDoubleB_db_pf_cpf_sv_dl4jets_train_val/'
+if os.path.isdir("/bigdata/shared/BumbleB"):
+    save_path = "/bigdata/shared/BumbleB/convert_20181121_ak8_80x_deepDoubleB_db_pf_cpf_sv_dl4jets_test/"
+    train_path = "/bigdata/shared/BumbleB/convert_20181121_ak8_80x_deepDoubleB_db_pf_cpf_sv_dl4jets_train_val/"
+elif os.path.isdir("/eos/user/w/woodson/IN"):
+    save_path = "/eos/user/w/woodson/IN/convert_20181121_ak8_80x_deepDoubleB_db_pf_cpf_sv_dl4jets_test/"
+    train_path = "/eos/user/w/woodson/IN/convert_20181121_ak8_80x_deepDoubleB_db_pf_cpf_sv_dl4jets_train_val/"
 
-spectators = ['fj_pt',
-              'fj_eta',
-              'fj_sdmass',
-              'fj_n_sdsubjets',
-              'fj_doubleb',
-              'fj_tau21',
-              'fj_tau32',
-              'npv',
-              'npfcands',
-              'ntracks',
-              'nsv']
+spectators = [
+    "fj_pt",
+    "fj_eta",
+    "fj_sdmass",
+    "fj_n_sdsubjets",
+    "fj_doubleb",
+    "fj_tau21",
+    "fj_tau32",
+    "npv",
+    "npfcands",
+    "ntracks",
+    "nsv",
+]
+
 
 def main(args):
     test_spec_arrays = []
     train_spec_arrays = []
-    
-    for test_file in sorted(glob.glob(save_path + 'test_*_spectators_0.npy')):
+
+    for test_file in sorted(glob.glob(save_path + "test_*_spectators_0.npy")):
         test_spec_arrays.append(np.load(test_file))
     test_spec = np.concatenate(test_spec_arrays)
 
-    for train_file in sorted(glob.glob(train_path + 'train_val_*_spectators_0.npy')):
+    for train_file in sorted(glob.glob(train_path + "train_val_*_spectators_0.npy")):
         train_spec_arrays.append(np.load(train_file))
     train_spec = np.concatenate(train_spec_arrays)
 
@@ -59,14 +63,15 @@ def main(args):
     print(test_spec.shape)
     print(train_spec.shape)
 
-    df_test = pd.DataFrame(test_spec.reshape(test_spec.shape[0],-1), columns = spectators)
-    df_test.to_pickle('%s/output_test.pkl'%args.outdir)
+    df_test = pd.DataFrame(test_spec.reshape(test_spec.shape[0], -1), columns=spectators)
+    df_test.to_pickle("%s/output_test.pkl" % args.outdir)
 
-    df_train = pd.DataFrame(train_spec.reshape(train_spec.shape[0],-1), columns = spectators)
-    df_train.to_pickle('%s/output_train.pkl'%args.outdir)
+    df_train = pd.DataFrame(train_spec.reshape(train_spec.shape[0], -1), columns=spectators)
+    df_train.to_pickle("%s/output_train.pkl" % args.outdir)
+
 
 if __name__ == "__main__":
-    """ This is executed when run from the command line """
+    """This is executed when run from the command line"""
     parser = argparse.ArgumentParser()
 
     # Required positional arguments

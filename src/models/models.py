@@ -1,11 +1,15 @@
 import itertools
+
 import torch
 import torch.nn as nn
-from torch.autograd.variable import *
 import torch.optim as optim
+from torch.autograd.variable import *
+
 
 class GraphNet(nn.Module):
-    def __init__(self, n_constituents, n_targets, params, hidden, n_vertices, params_v, vv_branch=False, De=5, Do=6, softmax=False):
+    def __init__(
+        self, n_constituents, n_targets, params, hidden, n_vertices, params_v, vv_branch=False, De=5, Do=6, softmax=False
+    ):
         super(GraphNet, self).__init__()
         self.hidden = int(hidden)
         self.P = params
@@ -26,7 +30,7 @@ class GraphNet(nn.Module):
         self.softmax = softmax
         if self.vv_branch:
             self.assign_matrices_SVSV()
-        
+
         self.Ra = torch.ones(self.Dr, self.Nr)
         self.fr1 = nn.Linear(2 * self.P + self.Dr, self.hidden).cuda()
         self.fr2 = nn.Linear(self.hidden, int(self.hidden)).cuda()
@@ -47,24 +51,24 @@ class GraphNet(nn.Module):
             self.fo3_v = nn.Linear(int(self.hidden), self.Do).cuda()
 
         if self.vv_branch:
-            #self.fc_1 = nn.Linear(2*self.Do, self.Do).cuda()
-            #self.fc_2 = nn.Linear(self.Do, int(self.Do/2)).cuda()
-            #self.fc_3 = nn.Linear(int(self.Do/2), self.n_targets).cuda()
-            self.fc_fixed = nn.Linear(2*self.Do, self.n_targets).cuda()
+            # self.fc_1 = nn.Linear(2*self.Do, self.Do).cuda()
+            # self.fc_2 = nn.Linear(self.Do, int(self.Do/2)).cuda()
+            # self.fc_3 = nn.Linear(int(self.Do/2), self.n_targets).cuda()
+            self.fc_fixed = nn.Linear(2 * self.Do, self.n_targets).cuda()
         else:
             self.fc_fixed = nn.Linear(self.Do, self.n_targets).cuda()
-        #self.gru = nn.GRU(input_size = self.Do, hidden_size = 20, bidirectional = False).cuda()
-            
+        # self.gru = nn.GRU(input_size = self.Do, hidden_size = 20, bidirectional = False).cuda()
+
     def assign_matrices(self):
         self.Rr = torch.zeros(self.N, self.Nr)
         self.Rs = torch.zeros(self.N, self.Nr)
-        receiver_sender_list = [i for i in itertools.product(range(self.N), range(self.N)) if i[0]!=i[1]]
+        receiver_sender_list = [i for i in itertools.product(range(self.N), range(self.N)) if i[0] != i[1]]
         for i, (r, s) in enumerate(receiver_sender_list):
             self.Rr[r, i] = 1
             self.Rs[s, i] = 1
         self.Rr = (self.Rr).cuda()
         self.Rs = (self.Rs).cuda()
-    
+
     def assign_matrices_SV(self):
         self.Rk = torch.zeros(self.N, self.Nt)
         self.Rv = torch.zeros(self.Nv, self.Nt)
@@ -78,7 +82,7 @@ class GraphNet(nn.Module):
     def assign_matrices_SVSV(self):
         self.Rl = torch.zeros(self.Nv, self.Ns)
         self.Ru = torch.zeros(self.Nv, self.Ns)
-        receiver_sender_list = [i for i in itertools.product(range(self.Nv), range(self.Nv)) if i[0]!=i[1]]
+        receiver_sender_list = [i for i in itertools.product(range(self.Nv), range(self.Nv)) if i[0] != i[1]]
         for i, (l, u) in enumerate(receiver_sender_list):
             self.Rl[l, i] = 1
             self.Ru[u, i] = 1
@@ -99,8 +103,8 @@ class GraphNet(nn.Module):
         E = torch.transpose(E, 1, 2).contiguous()
         Ebar_pp = self.tmul(E, torch.transpose(self.Rr, 0, 1).contiguous())
         del E
-        
-        ####Secondary Vertex - PF Candidate### 
+
+        ####Secondary Vertex - PF Candidate###
         Ork = self.tmul(x, self.Rk)
         Orv = self.tmul(y, self.Rv)
         B = torch.cat([Ork, Orv], 1)
@@ -142,7 +146,7 @@ class GraphNet(nn.Module):
         del C
 
         if self.vv_branch:
-            ####Final output matrix for particles### 
+            ####Final output matrix for particles###
             C = torch.cat([y, Ebar_vv, Ebar_vp], 1)
             del Ebar_vv
             del Ebar_vp
@@ -152,30 +156,29 @@ class GraphNet(nn.Module):
             C = nn.functional.relu(self.fo2_v(C))
             O_v = nn.functional.relu(self.fo3_v(C).view(-1, self.Nv, self.Do))
             del C
-        
-        #Taking the sum of over each particle/vertex
+
+        # Taking the sum of over each particle/vertex
         N = torch.sum(O, dim=1)
         del O
         if self.vv_branch:
-            N_v = torch.sum(O_v,dim=1)
+            N_v = torch.sum(O_v, dim=1)
             del O_v
-        
+
         ### Classification MLP ###
         if self.vv_branch:
-            #N = nn.functional.relu(self.fc_1(torch.cat([N, N_v],1)))
-            #N = nn.functional.relu(self.fc_2(N))
-            #N = self.fc_3(N)
-            N =self.fc_fixed(torch.cat([N, N_v],1))
+            # N = nn.functional.relu(self.fc_1(torch.cat([N, N_v],1)))
+            # N = nn.functional.relu(self.fc_2(N))
+            # N = self.fc_3(N)
+            N = self.fc_fixed(torch.cat([N, N_v], 1))
         else:
             N = self.fc_fixed(N)
 
         if self.softmax:
             N = nn.Softmax(dim=-1)(N)
 
-        return N 
-            
-    def tmul(self, x, y):  #Takes (I * J * K)(K * L) -> I * J * L 
+        return N
+
+    def tmul(self, x, y):  # Takes (I * J * K)(K * L) -> I * J * L
         x_shape = x.size()
         y_shape = y.size()
         return torch.mm(x.view(-1, x_shape[2]), y).view(-1, x_shape[1], y_shape[1])
-

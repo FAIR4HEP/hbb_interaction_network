@@ -1,45 +1,55 @@
-import os, sys, glob, tqdm
-import torch
+import glob
+import os
+import sys
+
 import numpy as np
-os.environ['HDF5_USE_FILE_LOCKING'] = 'FALSE'
-#test_path = '/storage/group/gpu/bigdata/BumbleB/convert_20181121_ak8_80x_deepDoubleB_db_pf_cpf_sv_dl4jets_test/'
-train_path = 'dataset/train/'
+import torch
+import tqdm
+
+os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
+# test_path = '/storage/group/gpu/bigdata/BumbleB/convert_20181121_ak8_80x_deepDoubleB_db_pf_cpf_sv_dl4jets_test/'
+train_path = "dataset/train/"
 
 from data import H5Data
+
 files = glob.glob(train_path + "/newdata_*.h5")
-files_val = files[:5] # take first 5 for validation
-files_train = files[5:] # take rest for training
+files_val = files[:5]  # take first 5 for validation
+files_train = files[5:]  # take rest for training
 
 batch_size = 128
-data_train = H5Data(batch_size = batch_size,
-                    cache = None,
-                    preloading=0,
-                    features_name='training_subgroup', 
-                    labels_name='target_subgroup',
-                    spectators_name='spectator_subgroup')
+data_train = H5Data(
+    batch_size=batch_size,
+    cache=None,
+    preloading=0,
+    features_name="training_subgroup",
+    labels_name="target_subgroup",
+    spectators_name="spectator_subgroup",
+)
 data_train.set_file_names(files_train)
 
-data_val = H5Data(batch_size = batch_size,
-                    cache = None,
-                    preloading=0,
-                    features_name='training_subgroup', 
-                    labels_name='target_subgroup',
-                    spectators_name='spectator_subgroup')
+data_val = H5Data(
+    batch_size=batch_size,
+    cache=None,
+    preloading=0,
+    features_name="training_subgroup",
+    labels_name="target_subgroup",
+    spectators_name="spectator_subgroup",
+)
 data_val.set_file_names(files_val)
 
-n_train=data_train.count_data()
-n_val=data_val.count_data()
+n_train = data_train.count_data()
+n_val = data_val.count_data()
 n0 = 0
 
-for sub_X,sub_Y,sub_Z in tqdm.tqdm(data_train.generate_data(),total=n_train/batch_size):
+for sub_X, sub_Y, sub_Z in tqdm.tqdm(data_train.generate_data(), total=n_train / batch_size):
     training = sub_X[2]
-    #training_neu = sub_X[1]
+    # training_neu = sub_X[1]
     training_sv = sub_X[3]
     target = sub_Y[0]
     spec = sub_Z[0]
-    targetv = (torch.from_numpy(np.argmax(target, axis = 1)).long())
-    keep_indices = (targetv==0)
-    #print(keep_indices)
+    targetv = torch.from_numpy(np.argmax(target, axis=1)).long()
+    keep_indices = targetv == 0
+    # print(keep_indices)
     # print("Initial Drop Count:", batch_size - torch.sum(keep_indices).item())
     n0 += torch.sum(keep_indices).item()
     # to_turn_on = torch.sum(keep_indices).item() + int(2*(batch_size - torch.sum(keep_indices).item())/3)
@@ -62,22 +72,22 @@ for sub_X,sub_Y,sub_Z in tqdm.tqdm(data_train.generate_data(),total=n_train/batc
     # print("Final Drop Count:", batch_size - torch.sum(keep_indices).item())
     # print(keep_indices)
     # break
-   
+
 
 print("Total data:", n_train)
 print("target=0 data:", n0)
 
 n0 = 0
 
-for sub_X,sub_Y,sub_Z in tqdm.tqdm(data_val.generate_data(),total=n_val/batch_size):
+for sub_X, sub_Y, sub_Z in tqdm.tqdm(data_val.generate_data(), total=n_val / batch_size):
     training = sub_X[2]
-    #training_neu = sub_X[1]
+    # training_neu = sub_X[1]
     training_sv = sub_X[3]
     target = sub_Y[0]
     spec = sub_Z[0]
-    targetv = (torch.from_numpy(np.argmax(target, axis = 1)).long())
-    keep_indices = (targetv==0)
-    #print(keep_indices)
+    targetv = torch.from_numpy(np.argmax(target, axis=1)).long()
+    keep_indices = targetv == 0
+    # print(keep_indices)
     # print("Initial Drop Count:", batch_size - torch.sum(keep_indices).item())
     n0 += torch.sum(keep_indices).item()
     # to_turn_on = torch.sum(keep_indices).item() + int(2*(batch_size - torch.sum(keep_indices).item())/3)
@@ -100,7 +110,7 @@ for sub_X,sub_Y,sub_Z in tqdm.tqdm(data_val.generate_data(),total=n_val/batch_si
     # print("Final Drop Count:", batch_size - torch.sum(keep_indices).item())
     # print(keep_indices)
     # break
-   
+
 
 print("Total data:", n_val)
 print("target=0 data:", n0)

@@ -1,12 +1,14 @@
 from __future__ import print_function
+
+import argparse
+import glob
+import os
+
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import os
-import numpy as np
-import glob
 import tqdm
-import argparse
 
 os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 train_path = "../../data/processed/train"
@@ -141,9 +143,7 @@ def main(args):
         loss_val = []
         loss_training = []
         correct = []
-        for sub_X, sub_Y, _ in tqdm.tqdm(
-            data_train.generate_data(), total=n_train / batch_size
-        ):
+        for sub_X, sub_Y, _ in tqdm.tqdm(data_train.generate_data(), total=n_train / batch_size):
             training = sub_X[2]
             training_sv = sub_X[3]
             target = sub_Y[0]
@@ -160,9 +160,7 @@ def main(args):
             l_train.backward()
             optimizer.step()
             del trainingv, trainingv_sv, targetv
-        for sub_X, sub_Y, _ in tqdm.tqdm(
-            data_val.generate_data(), total=n_val / batch_size
-        ):
+        for sub_X, sub_Y, _ in tqdm.tqdm(data_val.generate_data(), total=n_val / batch_size):
             training = sub_X[2]
             training_sv = sub_X[3]
             target = sub_Y[0]
@@ -191,9 +189,7 @@ def main(args):
             l_val_best = l_val
             torch.save(gnn.state_dict(), "%s/gnn_%s_best.pth" % (outdir, label))
 
-        acc_vals_validation[m] = accuracy_score(
-            val_targetv[:, 0], predicted[:, 0] > 0.5
-        )
+        acc_vals_validation[m] = accuracy_score(val_targetv[:, 0], predicted[:, 0] > 0.5)
         loss_vals_training[m] = l_training
         loss_vals_validation[m] = l_val
         loss_std_validation[m] = np.std(np.array(loss_val))
@@ -224,15 +220,9 @@ if __name__ == "__main__":
     parser.add_argument("outdir", help="Required output directory")
 
     # Optional arguments
-    parser.add_argument(
-        "--De", type=int, action="store", dest="De", default=20, help="De"
-    )
-    parser.add_argument(
-        "--Do", type=int, action="store", dest="Do", default=24, help="Do"
-    )
-    parser.add_argument(
-        "--hidden", type=int, action="store", dest="hidden", default=60, help="hidden"
-    )
+    parser.add_argument("--De", type=int, action="store", dest="De", default=20, help="De")
+    parser.add_argument("--Do", type=int, action="store", dest="Do", default=24, help="Do")
+    parser.add_argument("--hidden", type=int, action="store", dest="hidden", default=60, help="hidden")
 
     args = parser.parse_args()
     main(args)

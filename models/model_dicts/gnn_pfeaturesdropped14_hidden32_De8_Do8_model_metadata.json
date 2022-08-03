@@ -1,0 +1,15 @@
+{
+   "outdir": "IN_training",
+   "sv_branch": "1",
+   "vv_branch": "0",
+   "De": 8,
+   "Do": 8,
+   "hidden": 32,
+   "drop_rate": 0.0,
+   "epoch": 200,
+   "drop_pfeatures": "2,3,12,14,15,16,17,18,19,20,21,25,26,29",
+   "drop_svfeatures": "",
+   "label": "pfeaturesdropped14_hidden32_De8_Do8",
+   "batch_size": 128,
+   "load_def": false
+}

@@ -1,0 +1,15 @@
+{
+   "outdir": "IN_training",
+   "sv_branch": "1",
+   "vv_branch": "0",
+   "De": 8,
+   "Do": 24,
+   "hidden": 60,
+   "drop_rate": 0.0,
+   "epoch": 200,
+   "drop_pfeatures": "",
+   "drop_svfeatures": "",
+   "label": "De8",
+   "batch_size": 128,
+   "load_def": false
+}

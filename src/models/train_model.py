@@ -4,22 +4,24 @@ import argparse
 import glob
 import os
 import sys
-
-sys.path.append("..")
-sys.path.append("../..")
-
 import argparse
 import json
-
 import numpy as np
 import setGPU
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import tqdm
-from torch.autograd.variable import *
 
-print(torch.__version__)
+
+## Adding to PATH the locations for necessary modules
+
+sys.path.append("..")
+sys.path.append("../..")
+
+from data import h5data
+from models import GraphNet
+
 
 os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 test_path = "dataset/test/"
@@ -88,7 +90,7 @@ def main(args):
     """Main entry point of the app"""
 
     model_dict = {}
-    from data import h5data
+
 
     files = glob.glob(train_path + "/newdata_*.h5")
     files_val = files[:5]  # take first 5 for validation
@@ -157,7 +159,6 @@ def main(args):
     print("val data:", n_val)
     print("train data:", n_train)
 
-    from models import GraphNet
 
     gnn = GraphNet(
         n_constituents=N,
@@ -171,15 +172,17 @@ def main(args):
         Do=args.Do,
     )
 
-    #    ### N = Number of charged particles (60)
-    #    ### n_targets = 2 (number of target_class)
-    #    ### hidden = number of nodes in hidden layers
-    #    ### params = number of features for each charged particle (30)
-    #    ### n_vertices = number of secondary vertices (5)
-    #    ### params_v = number of features for secondary vertices (14)
-    #    ### vv_branch = to allow vv_branch ? (0 or False by default)
-    #    ### De = Output dimension of particle-particle interaction NN (fR)
-    #    ### Do = Output dimension of pre-aggregator transformation NN (fO)
+    """
+         N = Number of charged particles (60)
+         n_targets = 2 (number of target_class)
+         hidden = number of nodes in hidden layers
+         params = number of features for each charged particle (30)
+         n_vertices = number of secondary vertices (5)
+         params_v = number of features for secondary vertices (14)
+         vv_branch = to allow vv_branch ? (0 or False by default)
+         De = Output dimension of particle-particle interaction NN (fR)
+         Do = Output dimension of pre-aggregator transformation NN (fO)
+    """
 
     if load_def:
         if os.path.exists("../../models/trained_models/gnn_baseline_best.pth"):
@@ -209,22 +212,18 @@ def main(args):
                     new_state_dict[key] = def_state_dict[key].clone()
             else:
                 if key == "fr1_pv.weight":
-                    indices_to_keep = [i for i in range(len(params)) if i not in drop_pfeatures] + [
-                        len(params) + i for i in range(len(params_sv)) if i not in drop_svfeatures
-                    ]
+                    indices_to_keep = [i for i in range(len(params)) if i not in drop_pfeatures] + \
+                        [len(params) + i for i in range(len(params_sv)) if i not in drop_svfeatures]
 
                 if key == "fr1.weight":
-                    indices_to_keep = [i for i in range(len(params)) if i not in drop_pfeatures] + [
-                        len(params) + i for i in range(len(params)) if i not in drop_pfeatures
-                    ]
+                    indices_to_keep = [i for i in range(len(params)) if i not in drop_pfeatures] + \
+                        [len(params) + i for i in range(len(params)) if i not in drop_pfeatures]
 
                 if key == "fo1.weight":
-                    indices_to_keep = [i for i in range(len(params)) if i not in drop_pfeatures] + list(
-                        range(len(params), len(params) + 2 * args.De)
-                    )
+                    indices_to_keep = [i for i in range(len(params)) if i not in drop_pfeatures] + \
+                        list(range(len(params), len(params) + 2 * args.De))
 
                 new_tensor = def_state_dict[key][:, indices_to_keep]
-
                 if new_state_dict[key].shape != new_tensor.shape:
                     print(
                         "Tensor shapes don't match for key='{}': modified old = ({},{}); new = ({},{}): not updating it".format(
@@ -247,22 +246,19 @@ def main(args):
     loss_vals_validation = np.zeros(n_epochs)
     loss_std_validation = np.zeros(n_epochs)
 
-    acc_vals_training = np.zeros(n_epochs)
+
     acc_vals_validation = np.zeros(n_epochs)
-    acc_std_training = np.zeros(n_epochs)
-    acc_std_validation = np.zeros(n_epochs)
 
     final_epoch = 0
     l_val_best = 99999
 
-    from sklearn.metrics import accuracy_score, roc_auc_score, roc_curve
+    from sklearn.metrics import accuracy_score
 
     softmax = torch.nn.Softmax(dim=1)
     import time
 
     for m in range(n_epochs):
         print("Epoch %s\n" % m)
-        # torch.cuda.empty_cache()
         final_epoch = m
         lst = []
         loss_val = []
@@ -298,11 +294,10 @@ def main(args):
 
             optimizer.zero_grad()
             out = gnn(trainingv.cuda(), trainingv_sv.cuda())
-            l = loss(out, targetv.cuda())
-            loss_training.append(l.item())
-            l.backward()
+            batch_loss = loss(out, targetv.cuda())
+            loss_training.append(batch_loss.item())
+            batch_loss.backward()
             optimizer.step()
-            loss_string = "Loss: %s" % "{0:.5f}".format(l.item())
             del trainingv, trainingv_sv, targetv
 
         if drop_rate > 0.0:
@@ -332,7 +327,6 @@ def main(args):
             l_val = loss(out, targetv.cuda())
             loss_val.append(l_val.item())
 
-            targetv_cpu = targetv.cpu().data.numpy()
 
             correct.append(target)
             del trainingv, trainingv_sv, targetv

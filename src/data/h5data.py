@@ -1,10 +1,11 @@
 #  Data class and associated helper methods
-import numpy as np
-import h5py
+import itertools
 import os
 import time
 from threading import Thread
-import itertools
+
+import h5py
+import numpy as np
 
 
 class FilePreloader(Thread):
@@ -137,9 +138,7 @@ class Data(object):
                 cur_file_features = self.concat_data(leftovers[0], cur_file_features)
                 cur_file_labels = self.concat_data(leftovers[1], cur_file_labels)
                 if self.spectators:
-                    cur_file_spectators = self.concat_data(
-                        leftovers[2], cur_file_spectators
-                    )
+                    cur_file_spectators = self.concat_data(leftovers[2], cur_file_spectators)
                 leftovers = None
             num_in_file = self.get_num_samples(cur_file_features)
 
@@ -238,9 +237,7 @@ class H5Data(Data):
         # initialize the data-preloader
         self.fpl = None
         if preloading:
-            self.fpl = FilePreloader(
-                [], file_open=lambda n: h5py.File(n, "r"), n_ahead=preloading
-            )
+            self.fpl = FilePreloader([], file_open=lambda n: h5py.File(n, "r"), n_ahead=preloading)
             self.fpl.start()
 
     def load_data(self, in_file_name):

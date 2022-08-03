@@ -1,19 +1,20 @@
 from __future__ import print_function
+
+import argparse
+import glob
+import os
+
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.autograd.variable import *
 import torch.optim as optim
-import os
-import numpy as np
-import pandas as pd
+
 import util
 import setGPU
-import glob
-import sys
-#import tqdm
+import tqdm
 import argparse
 import json
-#sys.path.insert(0, '/nfshome/jduarte/DL4Jets/mpi_learn/mpi_learn/train')
 print(torch.__version__)
 
 os.environ['HDF5_USE_FILE_LOCKING'] = 'FALSE'
@@ -27,74 +28,58 @@ N = 60 # number of charged particles
 N_neu = 100 # number of neutral particles
 N_sv = 5 # number of SVs 
 n_targets = 2 # number of classes
+device = "cpu"
 
-params_1 = ['pfcand_ptrel',
-          'pfcand_erel',
-          'pfcand_phirel',
-          'pfcand_etarel',
-          'pfcand_deltaR',
-          'pfcand_puppiw',
-          'pfcand_drminsv',
-          'pfcand_drsubjet1',
-          'pfcand_drsubjet2',
-          'pfcand_hcalFrac'
-         ]
+params = [
+    "track_ptrel",
+    "track_erel",
+    "track_phirel",
+    "track_etarel",
+    "track_deltaR",
+    "track_drminsv",
+    "track_drsubjet1",
+    "track_drsubjet2",
+    "track_dz",
+    "track_dzsig",
+    "track_dxy",
+    "track_dxysig",
+    "track_normchi2",
+    "track_quality",
+    "track_dptdpt",
+    "track_detadeta",
+    "track_dphidphi",
+    "track_dxydxy",
+    "track_dzdz",
+    "track_dxydz",
+    "track_dphidxy",
+    "track_dlambdadz",
+    "trackBTag_EtaRel",
+    "trackBTag_PtRatio",
+    "trackBTag_PParRatio",
+    "trackBTag_Sip2dVal",
+    "trackBTag_Sip2dSig",
+    "trackBTag_Sip3dVal",
+    "trackBTag_Sip3dSig",
+    "trackBTag_JetDistVal",
+]
 
-params_2 = ['track_ptrel',     
-          'track_erel',     
-          'track_phirel',     
-          'track_etarel',     
-          'track_deltaR',
-          'track_drminsv',     
-          'track_drsubjet1',     
-          'track_drsubjet2',
-          'track_dz',     
-          'track_dzsig',     
-          'track_dxy',     
-          'track_dxysig',     
-          'track_normchi2',     
-          'track_quality',     
-          'track_dptdpt',     
-          'track_detadeta',     
-          'track_dphidphi',     
-          'track_dxydxy',     
-          'track_dzdz',     
-          'track_dxydz',     
-          'track_dphidxy',     
-          'track_dlambdadz',     
-          'trackBTag_EtaRel',     
-          'trackBTag_PtRatio',     
-          'trackBTag_PParRatio',     
-          'trackBTag_Sip2dVal',     
-          'trackBTag_Sip2dSig',     
-          'trackBTag_Sip3dVal',     
-          'trackBTag_Sip3dSig',     
-          'trackBTag_JetDistVal'
-         ]
+params_sv = [
+    "sv_ptrel",
+    "sv_erel",
+    "sv_phirel",
+    "sv_etarel",
+    "sv_deltaR",
+    "sv_pt",
+    "sv_mass",
+    "sv_ntracks",
+    "sv_normchi2",
+    "sv_dxy",
+    "sv_dxysig",
+    "sv_d3d",
+    "sv_d3dsig",
+    "sv_costhetasvpv",
+]
 
-params_3 = ['sv_ptrel',
-          'sv_erel',
-          'sv_phirel',
-          'sv_etarel',
-          'sv_deltaR',
-          'sv_pt',
-          'sv_mass',
-          'sv_ntracks',
-          'sv_normchi2',
-          'sv_dxy',
-          'sv_dxysig',
-          'sv_d3d',
-          'sv_d3dsig',
-          'sv_costhetasvpv'
-         ]
-
-
-
-'''
-#Deep double-b features 
-params_2 = params_2[22:]
-params_3 = params_2[11:13]
-'''
 
 def main(args):
     """ Main entry point of the app """
@@ -271,7 +256,7 @@ def main(args):
         tic = time.perf_counter()
         sig_count = 0
         data_dropped = 0
-        for sub_X,sub_Y,sub_Z in data_train.generate_data():# tqdm.tqdm(,total=n_train/batch_size):
+        for sub_X, sub_Y, _ in tqdm.tqdm(data_train.generate_data(), total=n_train / batch_size):
             training = sub_X[2]
             training_sv = sub_X[3]
             target = sub_Y[0]
@@ -313,12 +298,14 @@ def main(args):
             optimizer.step()
             loss_string = "Loss: %s" % "{0:.5f}".format(l.item())
             del trainingv, trainingv_sv, targetv
+
         if drop_rate > 0.:
             print("Signal Count: {}, Data Dropped: {}".format(sig_count, data_dropped))
         toc = time.perf_counter()
         print(f"Training done in {toc - tic:0.4f} seconds")
         tic = time.perf_counter()
-        for sub_X,sub_Y,sub_Z in data_val.generate_data(): #tqdm.tqdm(data_val.generate_data(),total=n_val/batch_size):
+     
+        for sub_X, sub_Y, _ in tqdm.tqdm(data_val.generate_data(), total=n_val / batch_size):
             training = sub_X[2]
             training_sv = sub_X[3]
             target = sub_Y[0]

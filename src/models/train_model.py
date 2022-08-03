@@ -2,7 +2,9 @@ from __future__ import print_function
 
 import argparse
 import glob
-import os
+import os, sys
+sys.path.append('..')
+sys.path.append('../..')
 
 import numpy as np
 import torch
@@ -10,7 +12,6 @@ import torch.nn as nn
 from torch.autograd.variable import *
 import torch.optim as optim
 
-import util
 import setGPU
 import tqdm
 import argparse
@@ -25,7 +26,6 @@ MMAX = 200. # max value
 MMIN = 40. # min value
 
 N = 60 # number of charged particles
-N_neu = 100 # number of neutral particles
 N_sv = 5 # number of SVs 
 n_targets = 2 # number of classes
 device = "cpu"
@@ -84,19 +84,14 @@ params_sv = [
 def main(args):
     """ Main entry point of the app """
     
-    #Convert two sets into two branch with one set in both and one set in only one (Use for this file)
-    params_neu = params_1
-    params = params_2
-    params_sv = params_3
     model_dict = {}
-    from data import H5Data
+    from data import h5data
     files = glob.glob(train_path + "/newdata_*.h5")
     files_val = files[:5] # take first 5 for validation
     files_train = files[5:] # take rest for training
     
     outdir = args.outdir
     vv_branch = args.vv_branch
-    sv_branch = args.sv_branch
     drop_rate = args.drop_rate
     load_def = args.load_def
     
@@ -121,28 +116,33 @@ def main(args):
         print("The following secondary vertex features to be dropped: ", drop_svfeatures)
     n_epochs = args.epoch
     batch_size = args.batch_size
-    os.system('mkdir -p %s'%outdir)
-    os.system('mkdir -p Model_Dicts/')
+    model_loc = "{}/trained_models/".format(outdir)
+    model_perf_loc = "{}/model_performances".format(outdir)
+    model_dict_loc = "{}/model_dicts".format(outdir)
+    os.system('mkdir -p {} {} {}'.format(model_loc, model_perf_loc, model_dict_loc))
+
+    ## Saving the model's metadata as a json dict
     for arg in vars(args):
         model_dict[arg] = getattr(args, arg)
-    f_model = open("Model_Dicts/gnn_{}_model_metadata.json".format(label), "w")
+    f_model = open("{}/gnn_{}_model_metadata.json".format(model_dict_loc, label), "w")
     json.dump(model_dict, f_model, indent=3)
     f_model.close()
     
 
-    data_train = H5Data(batch_size = batch_size,
-                        cache = None,
-                        preloading=0,
-                        features_name='training_subgroup', 
-                        labels_name='target_subgroup',
-                        spectators_name='spectator_subgroup')
+    ## Get the training and validation data
+    data_train = h5data.H5Data(batch_size = batch_size,
+                               cache = None,
+                               preloading=0,
+                               features_name='training_subgroup', 
+                               labels_name='target_subgroup',
+                               spectators_name='spectator_subgroup')
     data_train.set_file_names(files_train)
-    data_val = H5Data(batch_size = batch_size,
-                      cache = None,
-                      preloading=0,
-                      features_name='training_subgroup', 
-                      labels_name='target_subgroup',
-                      spectators_name='spectator_subgroup')
+    data_val = h5data.H5Data(batch_size = batch_size,
+                             cache = None,
+                             preloading=0,
+                             features_name='training_subgroup', 
+                             labels_name='target_subgroup',
+                             spectators_name='spectator_subgroup')
     data_val.set_file_names(files_val)
 
     n_val=data_val.count_data()
@@ -150,13 +150,9 @@ def main(args):
     print("val data:", n_val)
     print("train data:", n_train)
 
-    # Three implementations of IN with GraphNet being default
-    from gnn import GraphNetnoSV
-    from gnn import GraphNet
-    from gnn import GraphNetAllParticle
-    
-    if sv_branch: 
-        gnn = GraphNet(n_constituents = N,
+    from models import GraphNet
+
+    gnn = GraphNet(n_constituents = N,
                        n_targets = n_targets,
                        params = len(params) - len(drop_pfeatures),
                        hidden = args.hidden,
@@ -165,23 +161,28 @@ def main(args):
                        vv_branch = int(vv_branch),
                        De = args.De,
                        Do = args.Do)
-       ### N = Number of charged particles (60)
-       ### n_targets = 2 (number of target_class)
-       ### hidden = number of nodes in hidden layers
-       ### params = number of features for each charged particle (30)
-       ### n_vertices = number of secondary vertices (5)
-       ### params_v = number of features for secondary vertices (14)
-       ### vv_branch = to allow vv_branch ? (0 or False by default)
-       ### De = Output dimension of particle-particle interaction NN (fR)
-       ### Do = Output dimension of pre-aggregator transformation NN (fO) 
-    else: 
-        gnn = GraphNetnoSV(N, n_targets, len(params), args.hidden,
-                       De=args.De,
-                       Do=args.Do)
 
+    #    ### N = Number of charged particles (60)
+    #    ### n_targets = 2 (number of target_class)
+    #    ### hidden = number of nodes in hidden layers
+    #    ### params = number of features for each charged particle (30)
+    #    ### n_vertices = number of secondary vertices (5)
+    #    ### params_v = number of features for secondary vertices (14)
+    #    ### vv_branch = to allow vv_branch ? (0 or False by default)
+    #    ### De = Output dimension of particle-particle interaction NN (fR)
+    #    ### Do = Output dimension of pre-aggregator transformation NN (fO) 
     
     if load_def:
-        def_state_dict = torch.load("IN_training/gnn_new_DR0_best.pth")
+        if os.path.exists("../../models/trained_models/gnn_baseline_best.pth"):
+            defmodel_exists = True
+        else:
+            defmodel_exists = False
+        if not defmodel_exists:
+            print("Default model not found, skipping model preloading")
+            load_def = False
+
+    if load_def:
+        def_state_dict = torch.load("../../models/trained_models/gnn_baseline_best.pth")
         new_state_dict = gnn.state_dict()
         for key in def_state_dict.keys():
             if key not in ['fr1_pv.weight', 'fr1.weight', 'fo1.weight']:
@@ -197,11 +198,11 @@ def main(args):
                 if key == 'fr1_pv.weight':
                     indices_to_keep = [i for i in range(len(params)) if i not in drop_pfeatures] + \
                                       [len(params) + i for i in range(len(params_sv)) if i not in drop_svfeatures]
-                    # new_state_dict[key] = def_state_dict[key][:,indices_to_keep].clone()
+
                 if key == 'fr1.weight':
                     indices_to_keep = [i for i in range(len(params)) if i not in drop_pfeatures] + \
                                       [len(params) + i for i in range(len(params)) if i not in drop_pfeatures]
-                    # new_state_dict[key] = def_state_dict[key][:,indices_to_keep].clone()
+
                 if key == 'fo1.weight':
                     indices_to_keep = [i for i in range(len(params)) if i not in drop_pfeatures] + \
                                       list(range(len(params), len(params)+2*args.De))
@@ -220,11 +221,6 @@ def main(args):
         gnn.load_state_dict(new_state_dict)
             
                                     
-                    #Architecture with all-particles
-    #gnn = GraphNetAllParticle(N, N_neu, n_targets, len(params), len(params_neu), args.hidden, N_sv, len(params_sv),vv_branch=int(vv_branch), De=args.De, Do=args.Do) 
-    
-    # pre load best model
-    #gnn.load_state_dict(torch.load('out/gnn_new_best.pth'))
     
     loss = nn.CrossEntropyLoss(reduction='mean')
     optimizer = optim.Adam(gnn.parameters(), lr = 0.0001)
@@ -256,11 +252,10 @@ def main(args):
         tic = time.perf_counter()
         sig_count = 0
         data_dropped = 0
-        for sub_X, sub_Y, _ in tqdm.tqdm(data_train.generate_data(), total=n_train / batch_size):
+        for sub_X, sub_Y, _ in tqdm.tqdm(data_train.generate_data(), total=int(n_train / batch_size)):
             training = sub_X[2]
             training_sv = sub_X[3]
             target = sub_Y[0]
-            spec = sub_Z[0]
             trainingv = (torch.FloatTensor(training)).cuda()
             trainingv_sv = (torch.FloatTensor(training_sv)).cuda()
             targetv = (torch.from_numpy(np.argmax(target, axis = 1)).long()).cuda()
@@ -277,21 +272,13 @@ def main(args):
                 targetv = targetv[keep_indices]
             if len(drop_pfeatures) > 0:
                 keep_features = [i for i in np.arange(0, len(params), 1, dtype=int) if i not in drop_pfeatures]
-                # print(len(keep_features))
                 trainingv = trainingv[:,keep_features,:]
             if len(drop_svfeatures) > 0:
                 keep_features = [i for i in np.arange(0, len(params_sv), 1, dtype=int) if i not in drop_svfeatures]
                 trainingv_sv = trainingv_sv[:,keep_features,:]
             
             optimizer.zero_grad()
-            #out = gnn(trainingv.cuda(), trainingv_sv.cuda())
-            
-            #Input training dataset 
-            if sv_branch: 
-                out = gnn(trainingv.cuda(), trainingv_sv.cuda())
-            else: 
-                out = gnn(trainingv.cuda())
-                
+            out = gnn(trainingv.cuda(), trainingv_sv.cuda())
             l = loss(out, targetv.cuda())
             loss_training.append(l.item())
             l.backward()
@@ -309,24 +296,18 @@ def main(args):
             training = sub_X[2]
             training_sv = sub_X[3]
             target = sub_Y[0]
-            spec = sub_Z[0]
             trainingv = (torch.FloatTensor(training)).cuda()
             trainingv_sv = (torch.FloatTensor(training_sv)).cuda()
             targetv = (torch.from_numpy(np.argmax(target, axis = 1)).long()).cuda()
 
             if len(drop_pfeatures) > 0:
                 keep_features = [i for i in np.arange(0, len(params), 1, dtype=int) if i not in drop_pfeatures]
-                # print(len(keep_features))
                 trainingv = trainingv[:,keep_features,:]
             if len(drop_svfeatures) > 0:
                 keep_features = [i for i in np.arange(0, len(params_sv), 1, dtype=int) if i not in drop_svfeatures]
                 trainingv_sv = trainingv_sv[:,keep_features,:]
             
-            #Input validation dataset 
-            if sv_branch: 
-                out = gnn(trainingv.cuda(), trainingv_sv.cuda())
-            else: 
-                out = gnn(trainingv.cuda())
+            out = gnn(trainingv.cuda(), trainingv_sv.cuda())
                 
             lst.append(softmax(out).cpu().data.numpy())
             l_val = loss(out, targetv.cuda())
@@ -340,20 +321,20 @@ def main(args):
         print(f"Evaluation done in {toc - tic:0.4f} seconds")
         l_val = np.mean(np.array(loss_val))
     
-        predicted = np.concatenate(lst) #(torch.FloatTensor(np.concatenate(lst))).to(device)
+        predicted = np.concatenate(lst) 
         print('\nValidation Loss: ', l_val)
 
         l_training = np.mean(np.array(loss_training))
         print('Training Loss: ', l_training)
-        val_targetv = np.concatenate(correct) #torch.FloatTensor(np.array(correct)).cuda()
+        val_targetv = np.concatenate(correct) 
         
-        torch.save(gnn.state_dict(), '%s/gnn_%s_last.pth'%(outdir,label))
+        torch.save(gnn.state_dict(), '%s/gnn_%s_last.pth'%(model_loc,label))
         if l_val < l_val_best:
             print("new best model")
             l_val_best = l_val
-            torch.save(gnn.state_dict(), '%s/gnn_%s_best.pth'%(outdir,label))
-            np.save('%s/validation_target_vals_%s.npy'%(outdir,label),val_targetv)
-            np.save('%s/validation_predicted_vals_%s.npy'%(outdir,label),predicted)
+            torch.save(gnn.state_dict(), '%s/gnn_%s_best.pth'%(model_loc,label))
+            np.save('%s/validation_target_vals_%s.npy'%(model_perf_loc,label),val_targetv)
+            np.save('%s/validation_predicted_vals_%s.npy'%(model_perf_loc,label),predicted)
             
         print(val_targetv.shape, predicted.shape)
         print(val_targetv, predicted)
@@ -374,25 +355,22 @@ def main(args):
     loss_vals_validation = loss_vals_validation[:(final_epoch + 1)]
     loss_std_validation = loss_std_validation[:(final_epoch + 1)]
     loss_std_training = loss_std_training[:(final_epoch)]
-    np.save('%s/acc_vals_validation_%s.npy'%(outdir,label),acc_vals_validation)
-    np.save('%s/loss_vals_training_%s.npy'%(outdir,label),loss_vals_training)
-    np.save('%s/loss_vals_validation_%s.npy'%(outdir,label),loss_vals_validation)
-    np.save('%s/loss_std_validation_%s.npy'%(outdir,label),loss_std_validation)
-    np.save('%s/loss_std_training_%s.npy'%(outdir,label),loss_std_training)
+    np.save('%s/acc_vals_validation_%s.npy'%(model_perf_loc,label),acc_vals_validation)
+    np.save('%s/loss_vals_training_%s.npy'%(model_perf_loc,label),loss_vals_training)
+    np.save('%s/loss_vals_validation_%s.npy'%(model_perf_loc,label),loss_vals_validation)
+    np.save('%s/loss_std_validation_%s.npy'%(model_perf_loc,label),loss_std_validation)
+    np.save('%s/loss_std_training_%s.npy'%(model_perf_loc,label),loss_std_training)
 
 if __name__ == "__main__":
     """ This is executed when run from the command line """
     parser = argparse.ArgumentParser()
     
-    # Required positional arguments
-    parser.add_argument("outdir", help="Required output directory")
-    parser.add_argument("sv_branch", help="Required positional argument")
-    parser.add_argument("vv_branch", help="Required positional argument")
+    parser.add_argument("--outdir", type=str, action='store', dest='outdir', default='../../models/', help="Output directory")
+    parser.add_argument("--vv_branch", action='store_true', dest='vv_branch', default=False, help="Consider vertex-vertex interaction in model")
     
-    # Optional arguments
-    parser.add_argument("--De", type=int, action='store', dest='De', default = 5, help="De")
-    parser.add_argument("--Do", type=int, action='store', dest='Do', default = 6, help="Do")
-    parser.add_argument("--hidden", type=int, action='store', dest='hidden', default = 15, help="hidden")
+    parser.add_argument("--De", type=int, action='store', dest='De', default = 20, help="De")
+    parser.add_argument("--Do", type=int, action='store', dest='Do', default = 24, help="Do")
+    parser.add_argument("--hidden", type=int, action='store', dest='hidden', default = 60, help="hidden")
     parser.add_argument("--drop-rate", type=float, action='store', dest='drop_rate', default = 0., help="Signal Drop rate")
     parser.add_argument("--epoch", type=int, action='store', dest='epoch', default = 100, help="Epochs")
     parser.add_argument("--drop-pfeatures", type=str, action='store', dest='drop_pfeatures', default = '', help="comma separated indices of the particle candidate features to be dropped")

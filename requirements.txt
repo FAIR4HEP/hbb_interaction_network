@@ -11,4 +11,11 @@ python-dotenv>=0.5.1
 
 cernopendata-client[pycurl]
 
-
+numpy
+h5py
+tqdm
+scikit-learn
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
+torchvision
+torchaudio

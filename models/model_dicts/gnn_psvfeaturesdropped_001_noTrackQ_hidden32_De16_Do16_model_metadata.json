@@ -1,6 +1,5 @@
 {
-   "outdir": "IN_training",
-   "sv_branch": "1",
+   "outdir": "../../models",
    "vv_branch": "0",
    "De": 16,
    "Do": 16,

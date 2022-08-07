@@ -2,17 +2,16 @@ from __future__ import print_function
 
 import argparse
 import glob
+import json
 import os
 import sys
-import argparse
-import json
+
 import numpy as np
 import setGPU
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import tqdm
-
 
 ## Adding to PATH the locations for necessary modules
 
@@ -21,7 +20,6 @@ sys.path.append("../..")
 
 from data import h5data
 from models import GraphNet
-
 
 os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 test_path = "dataset/test/"
@@ -91,7 +89,6 @@ def main(args):
 
     model_dict = {}
 
-
     files = glob.glob(train_path + "/newdata_*.h5")
     files_val = files[:5]  # take first 5 for validation
     files_train = files[5:]  # take rest for training
@@ -159,7 +156,6 @@ def main(args):
     print("val data:", n_val)
     print("train data:", n_train)
 
-
     gnn = GraphNet(
         n_constituents=N,
         n_targets=n_targets,
@@ -212,16 +208,19 @@ def main(args):
                     new_state_dict[key] = def_state_dict[key].clone()
             else:
                 if key == "fr1_pv.weight":
-                    indices_to_keep = [i for i in range(len(params)) if i not in drop_pfeatures] + \
-                        [len(params) + i for i in range(len(params_sv)) if i not in drop_svfeatures]
+                    indices_to_keep = [i for i in range(len(params)) if i not in drop_pfeatures] + [
+                        len(params) + i for i in range(len(params_sv)) if i not in drop_svfeatures
+                    ]
 
                 if key == "fr1.weight":
-                    indices_to_keep = [i for i in range(len(params)) if i not in drop_pfeatures] + \
-                        [len(params) + i for i in range(len(params)) if i not in drop_pfeatures]
+                    indices_to_keep = [i for i in range(len(params)) if i not in drop_pfeatures] + [
+                        len(params) + i for i in range(len(params)) if i not in drop_pfeatures
+                    ]
 
                 if key == "fo1.weight":
-                    indices_to_keep = [i for i in range(len(params)) if i not in drop_pfeatures] + \
-                        list(range(len(params), len(params) + 2 * args.De))
+                    indices_to_keep = [i for i in range(len(params)) if i not in drop_pfeatures] + list(
+                        range(len(params), len(params) + 2 * args.De)
+                    )
 
                 new_tensor = def_state_dict[key][:, indices_to_keep]
                 if new_state_dict[key].shape != new_tensor.shape:
@@ -245,7 +244,6 @@ def main(args):
     loss_std_training = np.zeros(n_epochs)
     loss_vals_validation = np.zeros(n_epochs)
     loss_std_validation = np.zeros(n_epochs)
-
 
     acc_vals_validation = np.zeros(n_epochs)
 
@@ -326,7 +324,6 @@ def main(args):
             lst.append(softmax(out).cpu().data.numpy())
             l_val = loss(out, targetv.cuda())
             loss_val.append(l_val.item())
-
 
             correct.append(target)
             del trainingv, trainingv_sv, targetv

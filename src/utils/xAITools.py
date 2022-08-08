@@ -1,17 +1,19 @@
 import glob
 import json
 import os
-
+import sys
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torch.nn as nn
-from gnn import GraphNet, GraphNetAllParticle, GraphNetnoSV
 from matplotlib import cm, colors
 from sklearn.metrics import auc, precision_recall_curve, roc_auc_score, roc_curve
 
-from data import H5Data
-
+#sys.path.append("..")
+#sys.path.append("../..")
+#from data import h5data
+#from models import models
+#GraphNet, GraphNetAllParticle, GraphNetnoSV
 params = [
     "track_ptrel",
     "track_erel",

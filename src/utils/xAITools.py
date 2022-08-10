@@ -248,12 +248,26 @@ def fidelity_chart(fidelity_vals, tags, fname):
     plt.show()
 
 
+def weight_modifier(weights, mode, gamma, alpha, beta):
+    func_dict = {
+        "zero":   lambda w: w,
+        "eps":    lambda w: w,
+        "gamma":  lambda w: w + gamma * torch.ones(w.shape, device=w.device) * (w >  0) * w,
+        "gamma+": lambda w: w + gamma * torch.ones(w.shape, device=w.device) * (w >  0) * w,
+        "gamma-": lambda w: w + gamma * torch.ones(w.shape, device=w.device) * (w <= 0) * w,
+        "ab":     lambda w: w + alpha * torch.ones(w.shape, device=w.device) * (w >  0) * w \
+                              + beta  * torch.ones(w.shape, device=w.device) * (w <= 0) * w
+        }
+
+    return func_dict[mode](weights)
+    
+    
+
 def LRP(  # noqa: C901
     Rin,
     weights,
     biases,
     activations,
-    debug=False,
     include_bias=False,
     mode="zero",
     eps=1.0,
@@ -277,23 +291,8 @@ def LRP(  # noqa: C901
         mode = "zero"
 
     alpha = beta + 1
-    if mode == "gamma+" or mode == "gamma":
-        weights = weights + gamma * torch.ones(weights.shape, device="cuda") * (weights > 0)
-    elif mode == "gamma-":
-        weights = weights + gamma * torch.ones(weights.shape, device="cuda") * (weights <= 0)
-    elif mode == "ab":
-        weights = (
-            weights
-            + alpha * torch.ones(weights.shape, device="cuda") * (weights > 0)
-            + beta * torch.ones(weights.shape, device="cuda") * (weights <= 0)
-        )
-    if debug:
-        print("\nNext layer relevances sum", Rin.sum())
-        print("Next layer relevances size", Rin.size())
-        print("Weight matrix size", weights.size())
-        print("Biases size", biases.size())
-        print("Prev layer activation size", activations.size())
-
+    weights = weight_modifier(weights, mode, gamma, alpha, beta)
+    biases = weight_modifier(biases, mode, gamma, alpha, beta)
     denominator = torch.matmul(torch.transpose(weights, 0, 1), activations) + include_bias * biases.reshape(-1, 1)
     denominator[denominator == 0] = eps / 10.0
     if mode == "eps":
@@ -305,25 +304,13 @@ def LRP(  # noqa: C901
         dendropat = 0.0
     den2drop = torch.abs(denominator) <= dendropat
 
-    if debug:
-        print("Denominator drop threshold", dendropat)
-        print("How many denominators are zero?", torch.sum(den2drop).item())
-        print("Cumulative relevance of zeroed instances:", Rin[den2drop].sum().item())
-
-    if True:
-        fs_Rin = Rin.sum().item() / (Rin.sum().item() - Rin[den2drop].sum().item())
-        if debug:
-            print("Rescaling Factor for Rin:", fs_Rin)
-        Rin[den2drop] = 0.0
-        denominator[den2drop] = 1.0
-        Rin = Rin * fs_Rin
+    fs_Rin = Rin.sum().item() / (Rin.sum().item() - Rin[den2drop].sum().item())
+    Rin[den2drop] = 0.0
+    denominator[den2drop] = 1.0
+    Rin = Rin * fs_Rin
 
     scaledR = Rin / denominator
     Rout = torch.matmul(weights, scaledR) * activations
-
-    if debug:
-        print("Prev layer relevances size", Rout.size())
-        print("Prev layer relevances sum", Rout.sum(), "\n")
 
     return Rout
 
@@ -334,7 +321,6 @@ def LRPEvaluator(  # noqa: C901
     y,
     def_state_dict,
     weighted_firing=False,
-    debug=False,
     target=0,
     LRP_mode="eps",
     eps=1.0,
@@ -351,8 +337,6 @@ def LRPEvaluator(  # noqa: C901
     hidden_relevance = []
     tags = []
 
-    if debug:
-        print("target = ", target)
 
     # PF Candidate - PF Candidate
     Orr = model.tmul(x, model.Rr)
@@ -405,15 +389,12 @@ def LRPEvaluator(  # noqa: C901
     Relevances = N_out[:, :, target].reshape(Nb, 1, -1)
 
     # step-1: relevance for fc_fixed
-    if debug:
-        print("\nDoing LRP for fc_fixed)")
 
     rel_fc_fixed = LRP(
         Rin=Relevances,
         weights=torch.transpose(def_state_dict["fc_fixed.weight"], 0, 1)[:, target].reshape(-1, 1),
         biases=def_state_dict["fc_fixed.bias"][target].reshape(-1),
         activations=torch.transpose(N_in, 1, 2),
-        debug=debug,
         mode=LRP_mode,
         eps=eps,
         gamma=gamma,
@@ -426,30 +407,15 @@ def LRPEvaluator(  # noqa: C901
     # step-2: relevance propagation from O_bar -> O
 
     Omatrix = torch.transpose((Omatrix + 0) / (N_in + 1.0e-5), 1, 2)
-    if debug:
-        print("\nActivation distribution shape", Omatrix.shape)
-        print(Omatrix[:, 0:5, :])
-        print(torch.sum(Omatrix[:, 0:5, :], dim=2))
     rel_O = rel_fc_fixed * Omatrix
 
-    if debug:
-        print("\nFixed FC size after sum", rel_fc_fixed.size())
-        print(rel_fc_fixed.reshape(-1))
-        print("Fixed FC size before sum", rel_O.size())
-        print("Fixed FC relevance before sum", rel_O.sum())
-        print("Fo:", rel_O.max(), rel_O.min())
-
     # step-3: relevance propagation across fo
-
-    if debug:
-        print("\nDoing LRP for fo")
 
     rel_fo3 = LRP(
         Rin=rel_O,
         weights=torch.transpose(def_state_dict["fo3.weight"], 0, 1),
         biases=def_state_dict["fo3.bias"],
         activations=torch.transpose(C2.reshape(Nb, model.N, model.hidden), 1, 2),
-        debug=debug,
         mode=LRP_mode,
         gamma=gamma,
         eps=eps,
@@ -459,15 +425,11 @@ def LRPEvaluator(  # noqa: C901
     hidden_relevance.append((rel_fo3 / Relevances.reshape(Nb, 1, 1)).sum(dim=(0, 2)).detach().cpu().numpy())
     tags.append("fo2")
 
-    if debug:
-        print("fo3", rel_fo3.max(), rel_fo3.min())
-
     rel_fo2 = LRP(
         Rin=rel_fo3,
         weights=torch.transpose(def_state_dict["fo2.weight"], 0, 1),
         biases=def_state_dict["fo2.bias"],
         activations=torch.transpose(C1.reshape(Nb, model.N, model.hidden), 1, 2),
-        debug=debug,
         mode=LRP_mode,
         gamma=gamma,
         eps=eps,
@@ -477,61 +439,26 @@ def LRPEvaluator(  # noqa: C901
     hidden_relevance.append((rel_fo2 / Relevances.reshape(Nb, 1, 1)).sum(dim=(0, 2)).detach().cpu().numpy())
     tags.append("fo1")
 
-    if debug:
-        print("fo2", rel_fo2.max(), rel_fo2.min())
-
     rel_fo1 = LRP(
         Rin=rel_fo2,
         weights=torch.transpose(def_state_dict["fo1.weight"], 0, 1),
         biases=def_state_dict["fo1.bias"],
         activations=torch.transpose(C, 1, 2),
-        debug=debug,
         mode=LRP_mode,
         gamma=gamma,
         eps=eps,
         include_bias=include_bias,
     )
 
-    if debug:
-        print("fo1", rel_fo1.max(), rel_fo1.min())
-
     # Step-4: relevance redistribution for Interaction Matrices
 
     rel_Epp = rel_fo1[:, model.P : model.P + model.De, :]
     rel_Epv = rel_fo1[:, model.P + model.De : model.P + 2 * model.De, :]
     particle_relevances = particle_relevances + (rel_fo1[:, : model.P, :] / Relevances.reshape(Nb, 1, 1)).detach().cpu()
-
-    if debug:
-        print("\nParticle Relevances Sum: ", particle_relevances.sum())
-        print("Particle Relevances Max: ", particle_relevances.max())
-        print("Particle Relevances Min: ", particle_relevances.min())
-
-    if debug:
-        print("\nrel_Epp shape before IN: ", rel_Epp.size())
-        print("rel_Epp sum before IN: ", rel_Epp.sum())
-        print("rel_Epv shape before IN: ", rel_Epv.size())
-        print("rel_Epv sum before IN: ", rel_Epv.sum())
-        print("Remaining relevance sum before IN: ", rel_fo1[:, : model.P, :].sum())
-        print("Ebar_pp shape:", Ebar_pp.shape)
-        print("Epp shape:", Epp.shape)
-        print("Ebar_pv shape:", Ebar_pv.shape)
-        print("Epv shape:", Epv.shape)
-
     Ebar_pp = torch.transpose(C, 1, 2)[:, model.P : model.P + model.De, :]
     Ebar_pv = torch.transpose(C, 1, 2)[:, model.P + model.De : model.P + 2 * model.De, :]
     rel_Epp = torch.matmul(rel_Epp / (Ebar_pp + 1.0e-5), model.Rr) * Epp
     rel_Epv = torch.matmul(rel_Epv / (Ebar_pv + 1.0e-5), model.Rk) * Epv
-
-    if debug:
-        print("\nEpp relevance shape after IN: ", rel_Epp.size())
-        print("Epv relevance shape after IN: ", rel_Epv.size())
-        print("Epp relevance sum before IN: ", rel_Epp.sum())
-        print("Epv relevance sum before IN: ", rel_Epv.sum())
-        print("Epp", rel_Epp.max(), rel_Epp.min())
-        print("Epv", rel_Epv.max(), rel_Epv.min())
-
-    if debug:
-        print("\nDoing LRP for fr")
 
     # Step-5: relevance distribution across fr network (PC-PC)
 
@@ -543,14 +470,11 @@ def LRPEvaluator(  # noqa: C901
         weights=torch.transpose(def_state_dict["fr3.weight"], 0, 1),
         biases=def_state_dict["fr3.bias"],
         activations=torch.transpose(B2.reshape(Nb, model.Nr, model.hidden), 1, 2),
-        debug=debug,
         mode=LRP_mode,
         gamma=gamma,
         eps=eps,
         include_bias=include_bias,
     )
-    if debug:
-        print("fr3", rel_fr3.max(), rel_fr3.min())
 
     hidden_relevance.append((rel_fr3 / Relevances.reshape(Nb, 1, 1)).sum(dim=(0, 2)).detach().cpu().numpy())
     tags.append("fr2")
@@ -560,15 +484,12 @@ def LRPEvaluator(  # noqa: C901
         weights=torch.transpose(def_state_dict["fr2.weight"], 0, 1),
         biases=def_state_dict["fr2.bias"],
         activations=torch.transpose(B1.reshape(Nb, model.Nr, model.hidden), 1, 2),
-        debug=debug,
         mode=LRP_mode,
         gamma=gamma,
         eps=eps,
         include_bias=include_bias,
     )
 
-    if debug:
-        print("fr2", rel_fr2.max(), rel_fr2.min())
 
     hidden_relevance.append((rel_fr2 / Relevances.reshape(Nb, 1, 1)).sum(dim=(0, 2)).detach().cpu().numpy())
     tags.append("fr1")
@@ -578,7 +499,6 @@ def LRPEvaluator(  # noqa: C901
         weights=torch.transpose(def_state_dict["fr1.weight"], 0, 1),
         biases=def_state_dict["fr1.bias"],
         activations=torch.transpose(B, 1, 2),
-        debug=debug,
         extend_dendrop=True,
         dendrop_threshold=dendrop_threshold,
         mode=LRP_mode,
@@ -587,29 +507,12 @@ def LRPEvaluator(  # noqa: C901
         include_bias=include_bias,
     )
 
-    if debug:
-        print("fr1", rel_fr1.max(), rel_fr1.min())
-
     # Step-6: relevance distribution across Rr and Rs network matrices (PC-PC)
 
     rel_Rr = rel_fr1[:, : model.P, :]
     rel_Rs = rel_fr1[:, model.P :, :]
-    if debug:
-        print("\nRr relevance shape before IN: ", rel_Rr.size())
-        print("Rs relevance shape before IN: ", rel_Rs.size())
-        print("Rr relevance sum before IN: ", rel_Rr.sum())
-        print("Rs relevance sum before IN: ", rel_Rs.sum())
-
     rel_Rr = torch.matmul(rel_Rr, torch.transpose(model.Rr, 0, 1))
     rel_Rs = torch.matmul(rel_Rs, torch.transpose(model.Rs, 0, 1))
-
-    if debug:
-        print("\nRr relevance shape after IN: ", rel_Rr.size())
-        print("Rs relevance shape after IN: ", rel_Rs.size())
-        print("Rr relevance sum after IN: ", rel_Rr.sum())
-        print("Rs relevance sum after IN: ", rel_Rs.sum())
-        print("rel_Rr", rel_Rr.max(), rel_Rr.min())
-        print("rel_Rs", rel_Rs.max(), rel_Rs.min())
 
     particle_relevances = (
         particle_relevances
@@ -617,13 +520,8 @@ def LRPEvaluator(  # noqa: C901
         + (rel_Rs / Relevances.reshape(Nb, 1, 1)).detach().cpu()
     )
 
-    if debug:
-        print("\nParticle Relevances Sum: ", particle_relevances.sum())
-
     # Step-7: relevance distribution across fr_pv network (PC-SV)
 
-    if debug:
-        print("\nDoing LRP for fr_pv")
 
     hidden_relevance.append((rel_Epv / Relevances.reshape(Nb, 1, 1)).sum(dim=(0, 2)).detach().cpu().numpy())
     tags.append("fr3_pv")
@@ -633,7 +531,6 @@ def LRPEvaluator(  # noqa: C901
         weights=torch.transpose(def_state_dict["fr3_pv.weight"], 0, 1),
         biases=def_state_dict["fr3_pv.bias"],
         activations=torch.transpose(Bpv2.reshape(Nb, model.Nt, model.hidden), 1, 2),
-        debug=debug,
         mode=LRP_mode,
         gamma=gamma,
         eps=eps,
@@ -648,7 +545,6 @@ def LRPEvaluator(  # noqa: C901
         weights=torch.transpose(def_state_dict["fr2_pv.weight"], 0, 1),
         biases=def_state_dict["fr2_pv.bias"],
         activations=torch.transpose(Bpv1.reshape(Nb, model.Nt, model.hidden), 1, 2),
-        debug=debug,
         mode=LRP_mode,
         gamma=gamma,
         eps=eps,
@@ -663,7 +559,6 @@ def LRPEvaluator(  # noqa: C901
         weights=torch.transpose(def_state_dict["fr1_pv.weight"], 0, 1),
         biases=def_state_dict["fr1_pv.bias"],
         activations=torch.transpose(Bpv, 1, 2),
-        debug=debug,
         extend_dendrop=True,
         dendrop_threshold=dendrop_threshold,
         mode=LRP_mode,
@@ -676,26 +571,9 @@ def LRPEvaluator(  # noqa: C901
 
     rel_Rk = rel_fr1_pv[:, : model.P, :]
     rel_Rv = rel_fr1_pv[:, model.P :, :]
-    if debug:
-        print("\nRk relevance shape before IN: ", rel_Rk.size())
-        print("Rv relevance shape before IN: ", rel_Rv.size())
-        print("Rk relevance sum before IN: ", rel_Rk.sum())
-        print("Rv relevance sum before IN: ", rel_Rv.sum())
     rel_Rk = torch.matmul(rel_fr1_pv[:, : model.P, :], torch.transpose(model.Rk, 0, 1))
     rel_Rv = torch.matmul(rel_fr1_pv[:, model.P :, :], torch.transpose(model.Rv, 0, 1))
-
-    if debug:
-        print("\nRk relevance shape after IN: ", rel_Rk.size())
-        print("Rv relevance shape after IN: ", rel_Rv.size())
-        print("Rk relevance sum after IN: ", rel_Rk.sum())
-        print("Rv relevance sum after IN: ", rel_Rv.sum())
-
     particle_relevances = particle_relevances + (rel_Rk / Relevances.reshape(Nb, 1, 1)).detach().cpu()
     vertex_relevances = vertex_relevances + (rel_Rv / Relevances.reshape(Nb, 1, 1)).detach().cpu()
-
-    if debug:
-        print("\nParticle Relevances Sum: ", particle_relevances.sum())
-        print("Vertex Relevances Sum: ", vertex_relevances.sum())
-        print("Outsput shape:", N_out.shape)
 
     return N_out, particle_relevances, vertex_relevances, hidden_relevance, tags

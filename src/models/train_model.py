@@ -12,7 +12,7 @@ import torch.nn as nn
 import torch.optim as optim
 import tqdm
 
-from src.data import h5data
+from src.data.h5data import H5Data
 from src.models.models import GraphNet
 
 os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
@@ -126,7 +126,7 @@ def main(args):  # noqa: C901
     f_model.close()
 
     # Get the training and validation data
-    data_train = h5data.H5Data(
+    data_train = H5Data(
         batch_size=batch_size,
         cache=None,
         preloading=0,
@@ -135,7 +135,7 @@ def main(args):  # noqa: C901
         spectators_name="spectator_subgroup",
     )
     data_train.set_file_names(files_train)
-    data_val = h5data.H5Data(
+    data_val = H5Data(
         batch_size=batch_size,
         cache=None,
         preloading=0,

@@ -1,19 +1,9 @@
-import glob
-import json
-import os
-import sys
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torch.nn as nn
-from matplotlib import cm, colors
-from sklearn.metrics import auc, precision_recall_curve, roc_auc_score, roc_curve
+from sklearn.metrics import auc, precision_recall_curve, roc_curve
 
-#sys.path.append("..")
-#sys.path.append("../..")
-#from data import h5data
-#from models import models
-#GraphNet, GraphNetAllParticle, GraphNetnoSV
 params = [
     "track_ptrel",
     "track_erel",
@@ -69,7 +59,7 @@ Ntracks = 60
 Nverts = 5
 
 
-def eval(
+def eval(  # noqa: C901
     model,
     data,
     drop_pfeatures=torch.tensor([], dtype=torch.long),
@@ -91,14 +81,13 @@ def eval(
     correct = []
 
     with torch.no_grad():
-        for sub_X, sub_Y, sub_Z in data.generate_data():
+        for sub_X, sub_Y, _ in data.generate_data():
             training = sub_X[2]
             training_sv = sub_X[3]
             if save_data:
                 training_all.append(training)
                 training_sv_all.append(training_sv)
             target = sub_Y[0]
-            spec = sub_Z[0]
             trainingv = (torch.FloatTensor(training)).cuda()
 
             if sort_tracks:  # sorting tracks by energy => index 1 of the feature list
@@ -166,7 +155,11 @@ class ModelComparison:
             fpr, tpr, _ = roc_curve(self.targets[ii], self.preds[ii])
             self.aucs_roc.append(auc(fpr, tpr))
             # print(self.model_tags[ii])
-            plt.plot(fpr, tpr, label=self.model_tags[ii] + " ({:.2f}%)".format(self.aucs_roc[ii] * 100))
+            plt.plot(
+                fpr,
+                tpr,
+                label=self.model_tags[ii] + " ({:.2f}%)".format(self.aucs_roc[ii] * 100),
+            )
         plt.yscale("log")
         plt.xscale("log")
         plt.xlim([1e-5, 1.00])
@@ -187,7 +180,11 @@ class ModelComparison:
         for ii in range(self.n_models):
             precision, recall, _ = precision_recall_curve(self.targets[ii], self.preds[ii])
             self.aucs_prc.append(auc(recall, precision))
-            plt.plot(recall, precision, label=self.model_tags[ii] + " ({:.2f}%)".format(self.aucs_prc[ii] * 100))
+            plt.plot(
+                recall,
+                precision,
+                label=self.model_tags[ii] + " ({:.2f}%)".format(self.aucs_prc[ii] * 100),
+            )
         plt.xlabel("Recall", fontsize=20)
         plt.ylabel("Precision", fontsize=20)
         plt.legend(loc="lower left")
@@ -251,7 +248,7 @@ def fidelity_chart(fidelity_vals, tags, fname):
     plt.show()
 
 
-def LRP(
+def LRP(  # noqa: C901
     Rin,
     weights,
     biases,
@@ -265,18 +262,16 @@ def LRP(
     extend_dendrop=False,
     dendrop_threshold=1.0,
 ):
-    ## expected sizes:
-    ## Rin : (Nb, N_next, N_candidates)
-    ## weights : (N_prev, N_next)
-    ## biases: (N_next)
-    ## activations: (Nb, N_prev, N_candidates)
-    ## returns Rout: (Nb, N_prev, N_candidates)
-    # eps = 0.25 * torch.std(Rin, dim=(0,2), unbiased = False)
-    # print(eps)
-    ## creating denominator
-    ## shape (N_prev, N_next).T * (Nb, N_prev, N_candidates) + (N_next, 1) = (Nb, N_next, N_candidates)
+    """expected sizes:
+    Rin : (Nb, N_next, N_candidates)
+    weights : (N_prev, N_next)
+    biases: (N_next)
+    activations: (Nb, N_prev, N_candidates)
+    returns Rout: (Nb, N_prev, N_candidates)
+    eps = 0.25 * torch.std(Rin, dim=(0,2), unbiased = False)
+    shape (N_prev, N_next).T * (Nb, N_prev, N_candidates) + (N_next, 1) = (Nb, N_next, N_candidates)
+    """
 
-    # print(mode)
     if mode not in ["zero", "eps", "gamma", "gamma+", "gamma-", "ab"]:
         print("Unrecognized mode! Defaulting to LRP-0")
         mode = "zero"
@@ -333,7 +328,7 @@ def LRP(
     return Rout
 
 
-def LRPEvaluator(
+def LRPEvaluator(  # noqa: C901
     model,
     x,
     y,
@@ -359,13 +354,11 @@ def LRPEvaluator(
     if debug:
         print("target = ", target)
 
-    FiringEvaluator = []
-    layer_tags = []
-    ###PF Candidate - PF Candidate###
+    # PF Candidate - PF Candidate
     Orr = model.tmul(x, model.Rr)
     Ors = model.tmul(x, model.Rs)
     B = torch.cat([Orr, Ors], 1)
-    ### First MLP ###
+    # First MLP
     B = torch.transpose(B, 1, 2).contiguous()
     B1 = nn.functional.relu(model.fr1(B.view(-1, 2 * model.P + model.Dr)))
     B2 = nn.functional.relu(model.fr2(B1))
@@ -375,47 +368,43 @@ def LRPEvaluator(
     Ebar_pp = model.tmul(Epp, torch.transpose(model.Rr, 0, 1).contiguous())
     del E
 
-    ####Secondary Vertex - PF Candidate###
+    # Secondary Vertex - PF Candidate
     Ork = model.tmul(x, model.Rk)
     Orv = model.tmul(y, model.Rv)
     Bpv = torch.cat([Ork, Orv], 1)
-    ### First MLP ###
+    # First MLP
     Bpv = torch.transpose(Bpv, 1, 2).contiguous()
     Bpv1 = nn.functional.relu(model.fr1_pv(Bpv.view(-1, model.S + model.P + model.Dr)))
     Bpv2 = nn.functional.relu(model.fr2_pv(Bpv1))
     E = nn.functional.relu(model.fr3_pv(Bpv2))
     E = E.view(-1, model.Nt, model.De)
 
-    # del B
     Epv = torch.transpose(E, 1, 2).contiguous()
     Ebar_pv = model.tmul(Epv, torch.transpose(model.Rk, 0, 1).contiguous())
-    Ebar_vp = model.tmul(Epv, torch.transpose(model.Rv, 0, 1).contiguous())
+
     del E
 
-    ####Final output matrix for particles###
+    # Final output matrix for particles
     C = torch.cat([x, Ebar_pp, Ebar_pv], 1)
     C = torch.transpose(C, 1, 2).contiguous()
-    ### Second MLP ###
+    # Second MLP
     C1 = nn.functional.relu(model.fo1(C.view(-1, model.P + model.Dx + (2 * model.De))))
     C2 = nn.functional.relu(model.fo2(C1))
-    O = nn.functional.relu(model.fo3(C2))
-    O = O.view(-1, model.N, model.Do)
-
-    # del C
+    Omatrix = nn.functional.relu(model.fo3(C2))
+    Omatrix = Omatrix.view(-1, model.N, model.Do)
 
     # Taking the sum of over each particle/vertex
-    N_in = torch.sum(O, dim=1).reshape(Nb, 1, model.Do)
-    # del O
+    N_in = torch.sum(Omatrix, dim=1).reshape(Nb, 1, model.Do)
 
-    ### Classification MLP ###
+    # Classification MLP
     N_out = model.fc_fixed(N_in)
 
-    ######## This is where we start calculating the LRP for for different layers
+    # This is where we start calculating the LRP for for different layers
 
-    ## First calculating the total relevance of the desired jet class
+    # First calculating the total relevance of the desired jet class
     Relevances = N_out[:, :, target].reshape(Nb, 1, -1)
 
-    ## step-1: relevance for fc_fixed
+    # step-1: relevance for fc_fixed
     if debug:
         print("\nDoing LRP for fc_fixed)")
 
@@ -434,14 +423,14 @@ def LRPEvaluator(
     hidden_relevance.append((rel_fc_fixed / Relevances.reshape(Nb, 1, 1)).sum(dim=(0, 2)).detach().cpu().numpy())
     tags.append("fo3")
 
-    ## step-2: relevance propagation from O_bar -> O
+    # step-2: relevance propagation from O_bar -> O
 
-    O = torch.transpose((O + 0) / (N_in + 1.0e-5), 1, 2)
+    Omatrix = torch.transpose((Omatrix + 0) / (N_in + 1.0e-5), 1, 2)
     if debug:
-        print("\nActivation distribution shape", O.shape)
-        print(O[:, 0:5, :])
-        print(torch.sum(O[:, 0:5, :], dim=2))
-    rel_O = rel_fc_fixed * O
+        print("\nActivation distribution shape", Omatrix.shape)
+        print(Omatrix[:, 0:5, :])
+        print(torch.sum(Omatrix[:, 0:5, :], dim=2))
+    rel_O = rel_fc_fixed * Omatrix
 
     if debug:
         print("\nFixed FC size after sum", rel_fc_fixed.size())
@@ -450,7 +439,7 @@ def LRPEvaluator(
         print("Fixed FC relevance before sum", rel_O.sum())
         print("Fo:", rel_O.max(), rel_O.min())
 
-    ## step-3: relevance propagation across fo
+    # step-3: relevance propagation across fo
 
     if debug:
         print("\nDoing LRP for fo")
@@ -506,7 +495,7 @@ def LRPEvaluator(
     if debug:
         print("fo1", rel_fo1.max(), rel_fo1.min())
 
-    ## Step-4: relevance redistribution for Interaction Matrices
+    # Step-4: relevance redistribution for Interaction Matrices
 
     rel_Epp = rel_fo1[:, model.P : model.P + model.De, :]
     rel_Epv = rel_fo1[:, model.P + model.De : model.P + 2 * model.De, :]
@@ -544,7 +533,7 @@ def LRPEvaluator(
     if debug:
         print("\nDoing LRP for fr")
 
-    ## Step-5: relevance distribution across fr network (PC-PC)
+    # Step-5: relevance distribution across fr network (PC-PC)
 
     hidden_relevance.append((rel_Epp / Relevances.reshape(Nb, 1, 1)).sum(dim=(0, 2)).detach().cpu().numpy())
     tags.append("fr3")
@@ -601,7 +590,7 @@ def LRPEvaluator(
     if debug:
         print("fr1", rel_fr1.max(), rel_fr1.min())
 
-    ## Step-6: relevance distribution across Rr and Rs network matrices (PC-PC)
+    # Step-6: relevance distribution across Rr and Rs network matrices (PC-PC)
 
     rel_Rr = rel_fr1[:, : model.P, :]
     rel_Rs = rel_fr1[:, model.P :, :]
@@ -631,7 +620,7 @@ def LRPEvaluator(
     if debug:
         print("\nParticle Relevances Sum: ", particle_relevances.sum())
 
-    ## Step-7: relevance distribution across fr_pv network (PC-SV)
+    # Step-7: relevance distribution across fr_pv network (PC-SV)
 
     if debug:
         print("\nDoing LRP for fr_pv")
@@ -683,7 +672,7 @@ def LRPEvaluator(
         include_bias=include_bias,
     )
 
-    ## Step-8: relevance distribution across Rr and Rs network matrices (PC-PC)
+    # Step-8: relevance distribution across Rr and Rs network matrices (PC-PC)
 
     rel_Rk = rel_fr1_pv[:, : model.P, :]
     rel_Rv = rel_fr1_pv[:, model.P :, :]

@@ -4,22 +4,16 @@ import argparse
 import glob
 import json
 import os
-import sys
 
 import numpy as np
-import setGPU
+import setGPU  # noqa: F401
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import tqdm
 
-## Adding to PATH the locations for necessary modules
-
-sys.path.append("..")
-sys.path.append("../..")
-
-from data import h5data
-from models import GraphNet
+from src.data import h5data
+from src.models.models import GraphNet
 
 os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 test_path = "dataset/test/"
@@ -84,7 +78,7 @@ params_sv = [
 ]
 
 
-def main(args):
+def main(args):  # noqa: C901
     """Main entry point of the app"""
 
     model_dict = {}
@@ -124,14 +118,14 @@ def main(args):
     model_dict_loc = "{}/model_dicts".format(outdir)
     os.system("mkdir -p {} {} {}".format(model_loc, model_perf_loc, model_dict_loc))
 
-    ## Saving the model's metadata as a json dict
+    # Saving the model's metadata as a json dict
     for arg in vars(args):
         model_dict[arg] = getattr(args, arg)
     f_model = open("{}/gnn_{}_model_metadata.json".format(model_dict_loc, label), "w")
     json.dump(model_dict, f_model, indent=3)
     f_model.close()
 
-    ## Get the training and validation data
+    # Get the training and validation data
     data_train = h5data.H5Data(
         batch_size=batch_size,
         cache=None,
@@ -225,7 +219,8 @@ def main(args):
                 new_tensor = def_state_dict[key][:, indices_to_keep]
                 if new_state_dict[key].shape != new_tensor.shape:
                     print(
-                        "Tensor shapes don't match for key='{}': modified old = ({},{}); new = ({},{}): not updating it".format(
+                        "Tensor shapes don't match for "
+                        + "key='{}': modified old = ({},{}); new = ({},{}): not updating it".format(
                             key,
                             new_tensor.shape[0],
                             new_tensor.shape[1],
@@ -343,8 +338,14 @@ def main(args):
             print("new best model")
             l_val_best = l_val
             torch.save(gnn.state_dict(), "%s/gnn_%s_best.pth" % (model_loc, label))
-            np.save("%s/validation_target_vals_%s.npy" % (model_perf_loc, label), val_targetv)
-            np.save("%s/validation_predicted_vals_%s.npy" % (model_perf_loc, label), predicted)
+            np.save(
+                "%s/validation_target_vals_%s.npy" % (model_perf_loc, label),
+                val_targetv,
+            )
+            np.save(
+                "%s/validation_predicted_vals_%s.npy" % (model_perf_loc, label),
+                predicted,
+            )
 
         print(val_targetv.shape, predicted.shape)
         print(val_targetv, predicted)
@@ -379,7 +380,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        "--outdir", type=str, action="store", dest="outdir", default="../../models/", help="Output directory"
+        "--outdir",
+        type=str,
+        action="store",
+        dest="outdir",
+        default="../../models/",
+        help="Output directory",
     )
     parser.add_argument(
         "--vv_branch",
@@ -392,7 +398,14 @@ if __name__ == "__main__":
     parser.add_argument("--De", type=int, action="store", dest="De", default=20, help="De")
     parser.add_argument("--Do", type=int, action="store", dest="Do", default=24, help="Do")
     parser.add_argument("--hidden", type=int, action="store", dest="hidden", default=60, help="hidden")
-    parser.add_argument("--drop-rate", type=float, action="store", dest="drop_rate", default=0.0, help="Signal Drop rate")
+    parser.add_argument(
+        "--drop-rate",
+        type=float,
+        action="store",
+        dest="drop_rate",
+        default=0.0,
+        help="Signal Drop rate",
+    )
     parser.add_argument("--epoch", type=int, action="store", dest="epoch", default=100, help="Epochs")
     parser.add_argument(
         "--drop-pfeatures",
@@ -410,10 +423,28 @@ if __name__ == "__main__":
         default="",
         help="comma separated indices of the secondary vertex features to be dropped",
     )
-    parser.add_argument("--label", type=str, action="store", dest="label", default="", help="a label for the model")
-    parser.add_argument("--batch-size", type=int, action="store", dest="batch_size", default=128, help="batch_size")
     parser.add_argument(
-        "--load-def", action="store_true", dest="load_def", default=False, help="Load weights from default model if enabled"
+        "--label",
+        type=str,
+        action="store",
+        dest="label",
+        default="",
+        help="a label for the model",
+    )
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        action="store",
+        dest="batch_size",
+        default=128,
+        help="batch_size",
+    )
+    parser.add_argument(
+        "--load-def",
+        action="store_true",
+        dest="load_def",
+        default=False,
+        help="Load weights from default model if enabled",
     )
 
     args = parser.parse_args()

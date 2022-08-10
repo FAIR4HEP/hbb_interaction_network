@@ -1,27 +1,18 @@
-import matplotlib as mpl
-
-mpl.use("agg")
 import argparse
 import glob
-import sys
 
-import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
-import setGPU
+import setGPU  # noqa: F401
 import torch
 import tqdm
-from matplotlib import rc, rcParams
-from sklearn.metrics import accuracy_score, roc_auc_score, roc_curve
+from sklearn.metrics import accuracy_score, roc_auc_score
 
 N = 60  # number of charged particles
 N_sv = 5  # number of SVs
 N_neu = 100
 n_targets = 2  # number of classes
-save_path_test = (
-    "dataset/test/"  #'/storage/group/gpu/bigdata/BumbleB/convert_20181121_ak8_80x_deepDoubleB_db_pf_cpf_sv_dl4jets_test/'
-)
-save_path_train_val = "dataset/train/"  #'/storage/group/gpu/bigdata/BumbleB/convert_20181121_ak8_80x_deepDoubleB_db_pf_cpf_sv_dl4jets_train_val/'
+save_path_test = "dataset/test/"
+save_path_train_val = "dataset/train/"
 
 spectators = [
     "fj_pt",
@@ -131,7 +122,7 @@ params_3 = [
 ]
 
 
-def main(args, save_path="", evaluating_test=True):
+def main(args, save_path="", evaluating_test=True):  # noqa: C901
 
     test_1_arrays = []
     test_2_arrays = []
@@ -255,86 +246,50 @@ def main(args, save_path="", evaluating_test=True):
         & no_undef
     ]
 
-    print(test_2.shape)
-    print(test_3.shape)
-    print(target_test.shape)
-    print(test_spec.shape)
-    print(target_test.shape)
-
     # Convert two sets into two branch with one set in both and one set in only one (Use for this file)
-    test_np = test_1
     test = test_2
-    params_neu = params_1
     params = params_2
-    test_sv = test_3
     params_sv = params_3
 
-    outdir = args.outdir
     vv_branch = args.vv_branch
-    sv_branch = args.sv_branch
-
-    label = "new_DR0"
 
     prediction = np.array([])
-    IN_out = np.array([])
     batch_size = 1024
     torch.cuda.empty_cache()
 
-    from gnn import GraphNet, GraphNetAllParticle, GraphNetnoSV
+    from models import GraphNet
 
-    if sv_branch:
-        gnn = GraphNet(
-            N, n_targets, len(params), args.hidden, N_sv, len(params_sv), vv_branch=int(vv_branch), De=args.De, Do=args.Do
-        )
-    else:
-        gnn = GraphNetnoSV(
-            N,
-            n_targets,
-            len(params),
-            args.hidden,
-            N_sv,
-            len(params_sv),
-            sv_branch=int(sv_branch),
-            vv_branch=int(vv_branch),
-            De=args.De,
-            Do=args.Do,
-        )
+    gnn = GraphNet(
+        N,
+        n_targets,
+        len(params),
+        args.hidden,
+        N_sv,
+        len(params_sv),
+        vv_branch=int(vv_branch),
+        De=args.De,
+        Do=args.Do,
+    )
 
     gnn.load_state_dict(torch.load("IN_training/gnn_new_DR0_best.pth"))
     print(sum(p.numel() for p in gnn.parameters() if p.requires_grad))
     softmax = torch.nn.Softmax(dim=1)
 
-    if sv_branch:
-        for j in tqdm.tqdm(range(0, target_test.shape[0], batch_size)):
-            out_test = softmax(
-                gnn(torch.from_numpy(test[j : j + batch_size]).cuda(), torch.from_numpy(test_sv[j : j + batch_size]).cuda())
-            )
-            out_test = out_test.cpu().data.numpy()
-            if j == 0:
-                prediction = out_test
-            else:
-                prediction = np.concatenate((prediction, out_test), axis=0)
-            del out_test
-
-    else:
-        for j in tqdm.tqdm(range(0, target_test.shape[0], batch_size)):
-            out_test = softmax(gnn(torch.from_numpy(test[j : j + batch_size]).cuda()))
-            out_test = out_test.cpu().data.numpy()
-            if j == 0:
-                prediction = out_test
-            else:
-                prediction = np.concatenate((prediction, out_test), axis=0)
-            del out_test
+    for j in tqdm.tqdm(range(0, target_test.shape[0], batch_size)):
+        out_test = softmax(gnn(torch.from_numpy(test[j : j + batch_size]).cuda()))
+        out_test = out_test.cpu().data.numpy()
+        if j == 0:
+            prediction = out_test
+        else:
+            prediction = np.concatenate((prediction, out_test), axis=0)
+        del out_test
 
     print(target_test.shape, prediction.shape)
     auc = roc_auc_score(target_test[:, 1], prediction[:, 1])
     print("AUC: ", auc)
-    idx_0 = target_test[:, 1] == 0
-    idx_1 = target_test[:, 1] == 1
-    # acc = (np.sum(prediction[:,1][idx_0] < 0.5) + np.sum(prediction[:,1][idx_1] >= 0.5))/prediction[:,1].size
     acc = accuracy_score(target_test[:, 0], prediction[:, 0] >= 0.5)
     print("Accuray: ", acc)
-    ## checking the sums
+    # checking the sums
     target_sums = np.sum(target_test, 1)
     prediction_sums = np.sum(prediction, 1)
     idx = target_sums == 1
@@ -348,14 +303,6 @@ def main(args, save_path="", evaluating_test=True):
     idx_bar = target_sums != 1
     print(target_test[idx_bar][0:10, :])
 
-    # if evaluating_test:
-    #     np.save('%s/truth_%s.npy'%(outdir,label),prediction)
-    #     np.save('%s/prediction_%s.npy'%(outdir,label),prediction)
-
-    # else:
-    #     np.save('%s/truth_train_%s.npy'%(outdir,label),prediction)
-    #     np.save('%s/prediction_train_%s.npy'%(outdir,label),prediction)
-
 
 if __name__ == "__main__":
     """This is executed when run from the command line"""
@@ -363,7 +310,6 @@ if __name__ == "__main__":
 
     # Required positional arguments
     parser.add_argument("outdir", help="Required output directory")
-    parser.add_argument("sv_branch", help="Required positional argument")
     parser.add_argument("vv_branch", help="Required positional argument")
     # Optional arguments
     parser.add_argument("--De", type=int, action="store", dest="De", default=5, help="De")
@@ -372,4 +318,3 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     main(args, save_path_test, True)
-    # main(args, save_path_train_val, False)

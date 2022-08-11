@@ -250,18 +250,18 @@ def fidelity_chart(fidelity_vals, tags, fname):
 
 def weight_modifier(weights, mode, gamma, alpha, beta):
     func_dict = {
-        "zero":   lambda w: w,
-        "eps":    lambda w: w,
-        "gamma":  lambda w: w + gamma * torch.ones(w.shape, device=w.device) * (w >  0) * w,
-        "gamma+": lambda w: w + gamma * torch.ones(w.shape, device=w.device) * (w >  0) * w,
+        "zero": lambda w: w,
+        "eps": lambda w: w,
+        "gamma": lambda w: w + gamma * torch.ones(w.shape, device=w.device) * (w > 0) * w,
+        "gamma+": lambda w: w + gamma * torch.ones(w.shape, device=w.device) * (w > 0) * w,
         "gamma-": lambda w: w + gamma * torch.ones(w.shape, device=w.device) * (w <= 0) * w,
-        "ab":     lambda w: w + alpha * torch.ones(w.shape, device=w.device) * (w >  0) * w \
-                              + beta  * torch.ones(w.shape, device=w.device) * (w <= 0) * w
-        }
+        "ab": lambda w: w
+        + alpha * torch.ones(w.shape, device=w.device) * (w > 0) * w
+        + beta * torch.ones(w.shape, device=w.device) * (w <= 0) * w,
+    }
 
     return func_dict[mode](weights)
-    
-    
+
 
 def LRP(  # noqa: C901
     Rin,
@@ -336,7 +336,6 @@ def LRPEvaluator(  # noqa: C901
     target = int(target)
     hidden_relevance = []
     tags = []
-
 
     # PF Candidate - PF Candidate
     Orr = model.tmul(x, model.Rr)
@@ -490,7 +489,6 @@ def LRPEvaluator(  # noqa: C901
         include_bias=include_bias,
     )
 
-
     hidden_relevance.append((rel_fr2 / Relevances.reshape(Nb, 1, 1)).sum(dim=(0, 2)).detach().cpu().numpy())
     tags.append("fr1")
 
@@ -521,7 +519,6 @@ def LRPEvaluator(  # noqa: C901
     )
 
     # Step-7: relevance distribution across fr_pv network (PC-SV)
-
 
     hidden_relevance.append((rel_Epv / Relevances.reshape(Nb, 1, 1)).sum(dim=(0, 2)).detach().cpu().numpy())
     tags.append("fr3_pv")

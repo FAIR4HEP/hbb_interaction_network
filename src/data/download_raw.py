@@ -10,8 +10,11 @@ data_raw_dir = cwd.parent.parent.joinpath("data/raw")
 data_raw_dir.mkdir(parents=True, exist_ok=True)
 
 # list the online raw files
-base_url = "http://opendata.cern.ch/eos/opendata/cms/datascience/HiggsToBBNtupleProducerTool/test"
-rawFileUrls = ["{base_url}/ntuple_merged_{i}".format(base_url=base_url, i=i) for i in range(0, 9)]
+base_url = (
+    "http://opendata.cern.ch/eos/opendata/cms/datascience/HiggsToBBNtupleProducerTool/"
+    + "HiggsToBBNTuple_HiggsToBB_QCD_RunII_13TeV_MC/test"
+)
+rawFileUrls = ["{base_url}/ntuple_merged_{i}.root".format(base_url=base_url, i=i) for i in range(0, 9)]
 
 # prepare target file objects
 fileNames = [url.rsplit("/", 1)[-1] for url in rawFileUrls]

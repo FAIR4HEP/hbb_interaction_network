@@ -3,7 +3,7 @@
 -e .
 awscli
 
-cernopendata-client[pycurl]
+cernopendata-client[pycurl,xrootd]
 
 # external requirements
 click
@@ -19,3 +19,5 @@ torch
 torchaudio
 torchvision
 tqdm
+uproot
+xrootd

@@ -74,14 +74,8 @@ def main(definitions, train):
 
             arrays = tree.arrays(labels, library="np", entry_start=k, entry_stop=k + batch_size)
             target_array = np.zeros((real_batch_size, 2), dtype=float)
-            target_array[:, 0] = arrays["sample_isQCD"] * (
-                arrays["label_QCD_b"]
-                + arrays["label_QCD_bb"]
-                + arrays["label_QCD_c"]
-                + arrays["label_QCD_cc"]
-                + arrays["label_QCD_others"]
-            )
-            target_array[:, 1] = arrays["label_H_bb"]
+            target_array[:, 0] = arrays["sample_isQCD"] * arrays["fj_isQCD"]
+            target_array[:, 1] = arrays["fj_isH"]
 
             with h5py.File(f"{project_dir}/data/processed/{dataset}/newdata_{counter}.h5", "w") as h5:
                 logger.info(f"creating {h5.filename} h5 file with {real_batch_size} events")

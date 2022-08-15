@@ -176,15 +176,11 @@ spectators:
 
 # all labels
 labels:
-  - label_QCD_b
-  - label_QCD_bb
-  - label_QCD_c
-  - label_QCD_cc
-  - label_QCD_others
   - sample_isQCD
-  - label_H_bb
+  - fj_isQCD
+  - fj_isH
 
 # 2 reduced labels: QCD or Hbb
 reduced_labels:
-  - sample_isQCD * (label_QCD_b + label_QCD_bb + label_QCD_c + label_QCD_cc + label_QCD_others)
-  - label_H_bb
+  - sample_isQCD * fj_isQCD
+  - fj_isH

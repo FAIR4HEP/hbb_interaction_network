@@ -1,6 +1,6 @@
 tree_name: "deepntuplizer/tree"
 n_feature_sets: 4
-batch_size: 10000
+batch_size: 100000
 # zero-pad up to 1 jet, 100 pf cands, 60 tracks, 5 svs
 nobj_0: 1
 nobj_1: 100

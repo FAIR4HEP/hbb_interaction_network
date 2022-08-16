@@ -1,9 +1,11 @@
 from __future__ import print_function
 
+import sys
 import argparse
 import glob
 import json
 import os
+from pathlib import Path
 
 import numpy as np
 import setGPU  # noqa: F401
@@ -12,6 +14,8 @@ import torch.nn as nn
 import torch.optim as optim
 import tqdm
 
+src_dir = Path.cwd()
+sys.path.insert(0, str(src_dir))
 from src.data.h5data import H5Data
 from src.models.models import GraphNet
 

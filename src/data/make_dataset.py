@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import logging
+import os
 from pathlib import Path
 
 import awkward as ak
@@ -43,13 +44,17 @@ def main(definitions, train):
         dataset = "test"
     files = defn[f"{dataset}_files"]
 
-    counter = 0
+    counter = -1
     for input_file in files:
         in_file = uproot.open(input_file)
         tree = in_file[defn["tree_name"]]
         nentries = tree.num_entries
         logger.info(f"opening {input_file} with {nentries} events")
-        for counter, k in enumerate(range(0, nentries, batch_size)):
+        for k in range(0, nentries, batch_size):
+            counter += 1
+            if os.path.isfile(f"{project_dir}/data/processed/{dataset}/newdata_{counter}.h5"):
+                logger.info(f"{project_dir}/data/processed/{dataset}/newdata_{counter}.h5 exists... skipping")
+                continue
             arrays = tree.arrays(spectators, library="np", entry_start=k, entry_stop=k + batch_size)
             spec_array = np.expand_dims(np.stack([arrays[spec] for spec in spectators], axis=1), axis=1)
             real_batch_size = spec_array.shape[0]
@@ -77,6 +82,7 @@ def main(definitions, train):
             target_array[:, 0] = arrays["sample_isQCD"] * arrays["fj_isQCD"]
             target_array[:, 1] = arrays["fj_isH"]
 
+            os.makedirs(f"{project_dir}/data/processed/{dataset}", exist_ok=True)
             with h5py.File(f"{project_dir}/data/processed/{dataset}/newdata_{counter}.h5", "w") as h5:
                 logger.info(f"creating {h5.filename} h5 file with {real_batch_size} events")
                 feature_data = h5.create_group(f"{dataset}ing_subgroup")

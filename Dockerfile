@@ -5,8 +5,8 @@ FROM jupyter/datascience-notebook:python-3.9.13
 USER root
 RUN apt-get update && \
     apt-get upgrade -qq -y && \
-    apt-get install -qq -y \
-    python3-pip \
+    apt-get install -qq -y --no-install-recommends \
+    emacs \
     cmake && \
     apt-get -y autoclean && \
     apt-get -y autoremove && \
@@ -18,11 +18,15 @@ RUN bash install_xrootd.sh && \
 ENV PATH /opt/xrootd/bin:${PATH}
 ENV LD_LIBRARY_PATH /opt/xrootd/lib
 
+USER $NB_USER
 WORKDIR /home/$NB_USER/hbb_interaction_network
 RUN mamba install xrootd
 COPY . .
 RUN pip install -r requirements.txt
+
+USER root
+RUN fix-permissions "${CONDA_DIR}" && \
+    fix-permissions "/home/${NB_USER}"
+
 USER $NB_USER
-
-
 CMD [ "bash" ]

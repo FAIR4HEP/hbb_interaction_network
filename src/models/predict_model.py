@@ -1,125 +1,26 @@
 import argparse
 import glob
+from pathlib import Path
 
 import numpy as np
 import setGPU  # noqa: F401
 import torch
 import tqdm
+import yaml
 from sklearn.metrics import accuracy_score, roc_auc_score
 
-N = 60  # number of charged particles
-N_sv = 5  # number of SVs
-N_neu = 100
-n_targets = 2  # number of classes
-save_path_test = "dataset/test/"
-save_path_train_val = "dataset/train/"
+project_dir = Path(__file__).resolve().parents[2]
+save_path_test = f"{project_dir}/data/processed/test/"
+definitions = f"{project_dir}/src/data/definitions.yml"
+with open(definitions) as yaml_file:
+    defn = yaml.load(yaml_file, Loader=yaml.FullLoader)
 
-spectators = [
-    "fj_pt",
-    "fj_eta",
-    "fj_sdmass",
-    "fj_n_sdsubjets",
-    "fj_doubleb",
-    "fj_tau21",
-    "fj_tau32",
-    "npv",
-    "npfcands",
-    "ntracks",
-    "nsv",
-]
-
-params_0 = [
-    "fj_jetNTracks",
-    "fj_nSV",
-    "fj_tau0_trackEtaRel_0",
-    "fj_tau0_trackEtaRel_1",
-    "fj_tau0_trackEtaRel_2",
-    "fj_tau1_trackEtaRel_0",
-    "fj_tau1_trackEtaRel_1",
-    "fj_tau1_trackEtaRel_2",
-    "fj_tau_flightDistance2dSig_0",
-    "fj_tau_flightDistance2dSig_1",
-    "fj_tau_vertexDeltaR_0",
-    "fj_tau_vertexEnergyRatio_0",
-    "fj_tau_vertexEnergyRatio_1",
-    "fj_tau_vertexMass_0",
-    "fj_tau_vertexMass_1",
-    "fj_trackSip2dSigAboveBottom_0",
-    "fj_trackSip2dSigAboveBottom_1",
-    "fj_trackSip2dSigAboveCharm_0",
-    "fj_trackSipdSig_0",
-    "fj_trackSipdSig_0_0",
-    "fj_trackSipdSig_0_1",
-    "fj_trackSipdSig_1",
-    "fj_trackSipdSig_1_0",
-    "fj_trackSipdSig_1_1",
-    "fj_trackSipdSig_2",
-    "fj_trackSipdSig_3",
-    "fj_z_ratio",
-]
-
-params_1 = [
-    "pfcand_ptrel",
-    "pfcand_erel",
-    "pfcand_phirel",
-    "pfcand_etarel",
-    "pfcand_deltaR",
-    "pfcand_puppiw",
-    "pfcand_drminsv",
-    "pfcand_drsubjet1",
-    "pfcand_drsubjet2",
-    "pfcand_hcalFrac",
-]
-
-params_2 = [
-    "track_ptrel",
-    "track_erel",
-    "track_phirel",
-    "track_etarel",
-    "track_deltaR",
-    "track_drminsv",
-    "track_drsubjet1",
-    "track_drsubjet2",
-    "track_dz",
-    "track_dzsig",
-    "track_dxy",
-    "track_dxysig",
-    "track_normchi2",
-    "track_quality",
-    "track_dptdpt",
-    "track_detadeta",
-    "track_dphidphi",
-    "track_dxydxy",
-    "track_dzdz",
-    "track_dxydz",
-    "track_dphidxy",
-    "track_dlambdadz",
-    "trackBTag_EtaRel",
-    "trackBTag_PtRatio",
-    "trackBTag_PParRatio",
-    "trackBTag_Sip2dVal",
-    "trackBTag_Sip2dSig",
-    "trackBTag_Sip3dVal",
-    "trackBTag_Sip3dSig",
-    "trackBTag_JetDistVal",
-]
-
-params_3 = [
-    "sv_ptrel",
-    "sv_erel",
-    "sv_phirel",
-    "sv_etarel",
-    "sv_deltaR",
-    "sv_pt",
-    "sv_mass",
-    "sv_ntracks",
-    "sv_normchi2",
-    "sv_dxy",
-    "sv_dxysig",
-    "sv_d3d",
-    "sv_d3dsig",
-    "sv_costhetasvpv",
-]
+N = defn["nobj_2"]  # number of charged particles
+N_sv = defn["nobj_3"]  # number of SVs
+n_targets = len(defn["reduced_labels"])  # number of classes
+spectators = defn["spectators"]
+params_2 = defn["features_2"]
+params_3 = defn["features_3"]
 
 
 def main(args, save_path="", evaluating_test=True):  # noqa: C901

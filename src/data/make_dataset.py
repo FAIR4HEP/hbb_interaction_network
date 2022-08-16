@@ -10,6 +10,8 @@ import numpy as np
 import uproot
 import yaml
 
+project_dir = Path(__file__).resolve().parents[2]
+
 
 def to_np_array(ak_array, maxN=100, pad=0, dtype=float):
     """convert awkward array to regular numpy array"""
@@ -17,7 +19,7 @@ def to_np_array(ak_array, maxN=100, pad=0, dtype=float):
 
 
 @click.command()
-@click.argument("definitions", type=click.Path(exists=True), default="definitions.yml")
+@click.argument("definitions", type=click.Path(exists=True), default=f"{project_dir}/src/data/definitions.yml")
 @click.option("--train", is_flag=True, show_default=True, default=True)
 def main(definitions, train):
     """Runs data processing scripts to turn raw data from (../raw) into
@@ -26,13 +28,10 @@ def main(definitions, train):
     logger = logging.getLogger(__name__)
     logger.info("making final data set from raw data")
 
-    # not used in this stub but often useful for finding various files
-    project_dir = Path(__file__).resolve().parents[2]
-
-    with open(definitions) as file:
+    with open(definitions) as yaml_file:
         # The FullLoader parameter handles the conversion from YAML
         # scalar values to Python the dictionary format
-        defn = yaml.load(file, Loader=yaml.FullLoader)
+        defn = yaml.load(yaml_file, Loader=yaml.FullLoader)
 
     spectators = defn["spectators"]
     labels = defn["labels"]

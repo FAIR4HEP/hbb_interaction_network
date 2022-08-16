@@ -11,7 +11,7 @@ click
 coverage
 flake8
 h5py
-
+setGPU
 numpy
 python-dotenv>=0.5.1
 scikit-learn

@@ -13,11 +13,57 @@
 
 import os
 import sys
+import inspect
+import shutil
+
+__location__ = os.path.join(os.getcwd(), os.path.dirname(
+    inspect.getfile(inspect.currentframe())))
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-# sys.path.insert(0, os.path.abspath('.'))
+sys.path.insert(0, os.path.join(__location__, '../src'))
+
+
+# -- Run sphinx-apidoc ------------------------------------------------------
+# This hack is necessary since RTD does not issue `sphinx-apidoc` before running
+# `sphinx-build -b html . _build/html`. See Issue:
+# https://github.com/rtfd/readthedocs.org/issues/1139
+# DON'T FORGET: Check the box "Install your project inside a virtualenv using
+# setup.py install" in the RTD Advanced Settings.
+# Additionally it helps us to avoid running apidoc manually
+
+try:  # for Sphinx >= 1.7
+    from sphinx.ext import apidoc
+except ImportError:
+    from sphinx import apidoc
+
+output_dir = os.path.join(__location__, "api")
+module_dir = os.path.join(__location__, "../src/")
+template_dir = os.path.join(__location__, "_templates/apidoc")
+
+try:
+    shutil.rmtree(output_dir)
+except FileNotFoundError:
+    pass
+
+try:
+    import sphinx
+    from pkg_resources import parse_version
+
+    cmd_line_template = "sphinx-apidoc -f -e -d 2 --implicit-namespaces -t {templatedir} -o {outputdir} {moduledir}"
+    cmd_line = cmd_line_template.format(templatedir=template_dir,
+                                        outputdir=output_dir,
+                                        moduledir=module_dir)
+
+    args = cmd_line.split(" ")
+    if parse_version(sphinx.__version__) >= parse_version('1.7'):
+        args = args[1:]
+
+    apidoc.main(args)
+except Exception as e:
+    print("Running `sphinx-apidoc` failed!\n{}".format(e))
+
 
 # -- General configuration -----------------------------------------------------
 
@@ -26,7 +72,10 @@ import sys
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = []
+extensions = ['sphinx.ext.autodoc', 'sphinx.ext.intersphinx', 'sphinx.ext.todo',
+              'sphinx.ext.autosummary', 'sphinx.ext.coverage', #'sphinx.ext.viewcode',
+              'sphinx.ext.doctest', 'sphinx.ext.ifconfig', 'sphinx.ext.mathjax',
+              'sphinx.ext.napoleon']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
@@ -81,17 +130,19 @@ exclude_patterns = ["_build"]
 # show_authors = False
 
 # The name of the Pygments (syntax highlighting) style to use.
-pygments_style = "sphinx"
+# pygments_style = "sphinx"
 
 # A list of ignored prefixes for module index sorting.
 # modindex_common_prefix = []
 
+# Both the class’ and the __init__ method’s docstring are concatenated and inserted.
+autoclass_content = 'both'
 
 # -- Options for HTML output ---------------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-html_theme = "default"
+html_theme = 'sphinx_rtd_theme'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -180,15 +231,15 @@ latex_elements = {
 
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
-latex_documents = [
-    (
-        "index",
-        "hbb_interaction_network.tex",
-        "hbb_interaction_network Documentation",
-        "FAIR4HEP",
-        "manual",
-    ),
-]
+# latex_documents = [
+#    (
+#        "index",
+#        "hbb_interaction_network.tex",
+#        "hbb_interaction_network Documentation",
+#        "FAIR4HEP",
+#        "manual",
+#    ),
+# ]
 
 # The name of an image file (relative to this directory) to place at the top of
 # the title page.
@@ -215,15 +266,15 @@ latex_documents = [
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [
-    (
-        "index",
-        "hbb_interaction_network",
-        "hbb_interaction_network Documentation",
-        ["FAIR4HEP"],
-        1,
-    )
-]
+# man_pages = [
+#    (
+#        "index",
+#        "hbb_interaction_network",
+#        "hbb_interaction_network Documentation",
+#        ["FAIR4HEP"],
+#        1,
+#    )
+# ]
 
 # If true, show URL addresses after external links.
 # man_show_urls = False
@@ -234,17 +285,17 @@ man_pages = [
 # Grouping the document tree into Texinfo files. List of tuples
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
-texinfo_documents = [
-    (
-        "index",
-        "hbb_interaction_network",
-        "hbb_interaction_network Documentation",
-        "FAIR4HEP",
-        "hbb_interaction_network",
-        "Hbb interaction network",
-        "Miscellaneous",
-    ),
-]
+# texinfo_documents = [
+#    (
+#        "index",
+#        "hbb_interaction_network",
+#        "hbb_interaction_network Documentation",
+#        "FAIR4HEP",
+#        "hbb_interaction_network",
+#        "Hbb interaction network",
+#        "Miscellaneous",
+#    ),
+#]
 
 # Documents to append as an appendix to all manuals.
 # texinfo_appendices = []

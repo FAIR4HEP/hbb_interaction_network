@@ -1,4 +1,4 @@
-name: Docs
+name: Deploy
 
 on:
   push:
@@ -29,3 +29,4 @@ jobs:
         branch: gh-pages
         directory: gh-pages
         github_token: ${{ secrets.GITHUB_TOKEN }}
+        force: true

@@ -7,15 +7,15 @@ import os
 import numpy as np
 import pandas as pd
 import glob
-import sys
 import tqdm
 import argparse
 import sklearn.metrics as _m
 import sklearn.model_selection
 
-from utils.gnn import GraphNetnoSV
-from utils.gnn import GraphNet
-from utils.gnn import GraphNetAllParticle
+import sys 
+sys.path.append("..") 
+from src.models.models import GraphNet
+
 
 #sys.path.insert(0, '/nfshome/jduarte/DL4Jets/mpi_learn/mpi_learn/train')
 print(torch.__version__)
@@ -149,9 +149,7 @@ def main(args):
                    De=args.De,
                    Do=args.Do)
     else: 
-        gnn = GraphNetnoSV(N, n_targets, len(params), args.hidden,
-                       De=args.De,
-                       Do=args.Do)
+        print("this is loading GraphNetnoSV")
     
     #Architecture with all-particles
     #gnn = GraphNetAllParticle(N, N_neu, n_targets, len(params), len(params_neu), args.hidden, N_sv, len(params_sv),vv_branch=int(vv_branch), De=args.De, Do=args.Do) 

@@ -12,8 +12,9 @@ import sklearn.metrics as _m
 from scipy.special import softmax
 from sklearn.metrics import roc_curve, roc_auc_score, accuracy_score
 
-from utils.gnn import GraphNet
-from utils.gnn import GraphNetnoSV
+import sys 
+sys.path.append("..") 
+from src.models.models import GraphNet
 import tqdm
 
 import glob

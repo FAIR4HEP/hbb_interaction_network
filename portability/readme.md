@@ -16,9 +16,10 @@
         
     run model: 
          
+        python pytorch2onnx.py
         python pytorch_onnx_inference.py
         
-    also include a notebook *pytorch2onnx.ipynb*
+    also include a notebook contain overall process *onnx.ipynb*
         
 3. run the conversion from onnx to tensorrt, and use tensorrt  to inference     
          

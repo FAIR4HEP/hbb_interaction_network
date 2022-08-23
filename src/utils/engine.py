@@ -35,5 +35,5 @@ def build_engine(model_path, batch_size):
         engine = builder.build_engine(network, config)
         # Serialize engine in .plan file
         buf = engine.serialize()
-        with open("./saved_models/5_10_gnn.plan", 'wb') as f:
+        with open("../../models/trained_models/tensorrt_models/5_10_gnn.plan", 'wb') as f:
             f.write(buf)

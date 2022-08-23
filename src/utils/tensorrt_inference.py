@@ -8,13 +8,13 @@ import tqdm
 import sklearn.metrics as _m
 from scipy.special import softmax
 from sklearn.metrics import roc_curve, roc_auc_score, accuracy_score
-from utils.engine import build_engine
+from engine import build_engine
 
 sample_size = 1800#000
 batch_size= 128  
 
-model_path = "./onnx_model/5_10_gnn_%s.onnx"%batch_size  
-save_path = './temp_test/'# './test_hbb/'#
+model_path = "../../models/trained_models/onnx_model/5_10_gnn_%s.onnx"%batch_size  
+save_path = '//grand/RAPINS/ruike/new_hbb/test/'# './test_hbb/'#
 # valid = np.load(save_path +'newdata_1.h5')
 test_2_arrays = []
 test_3_arrays = []
@@ -139,7 +139,7 @@ for n in range(1):
         # Load (Deserialize) engine
         TRT_LOGGER = trt.Logger(trt.Logger.WARNING)
         trt_runtime = trt.Runtime(TRT_LOGGER)
-        with open("./saved_models/5_10_gnn.plan", 'rb') as f:
+        with open("../../models/trained_models/tensorrt_models/5_10_gnn.plan", 'rb') as f:
             engine_data = f.read()
             engine = trt_runtime.deserialize_cuda_engine(engine_data)  
    

@@ -7,9 +7,12 @@ import os
 import numpy as np
 import pandas as pd
 # import setGPU
-from utils.data import H5Data 
+
+import sys 
+sys.path.append("..")
+from data.h5data import H5Data 
+
 import glob
-import sys
 import tqdm
 import argparse
 import sklearn.metrics as _m
@@ -19,8 +22,8 @@ import sklearn.model_selection
 print(torch.__version__) 
 
 os.environ['HDF5_USE_FILE_LOCKING'] = 'FALSE'
-test_path ='//grand/RAPINS/ruike/new_hbb/test/'# '/bigdata/shared/BumbleB/convert_20181121_ak8_80x_deepDoubleB_db_pf_cpf_sv_dl4jets_test/'
-train_path = '//grand/RAPINS/ruike/new_hbb/train/'#'/bigdata/shared/BumbleB/convert_20181121_ak8_80x_deepDoubleB_db_pf_cpf_sv_dl4jets_train_val/'
+test_path ='//grand/RAPINS/ruike/new_hbb/test/'
+train_path = '//grand/RAPINS/ruike/new_hbb/train/'
 NBINS = 40 # number of bins for loss function
 MMAX = 200. # max value
 MMIN = 40. # min value
@@ -112,7 +115,7 @@ def main():
     
     label = 'new'
 
-    batch_size =5229076 
+    batch_size =5229076 #number of all data samples
     data_train = H5Data(batch_size = batch_size,
                         cache = None,
                         preloading=0,
@@ -146,8 +149,6 @@ def main():
     # import time
     start_time = time.time()
     for sub_X,sub_Y,sub_Z in tqdm.tqdm(data_train.generate_data(),total=n_train/batch_size):
-        #print("read_num:",n_train/batch_size)
-        #print(np.shape(sub_X[0]))
         t_X1 = sub_X[0]
         t_X2 = sub_X[1]
         t_X3 = sub_X[2]
@@ -159,8 +160,6 @@ def main():
     
 
     ### split using rand
-    #index_l = list(range(len(t_Z)))
-    #zipped = zip(t_X,t_Y,t_Z)
     print(len(t_Z))
     print("splitting test and train!")
     index_list = list(range(len(t_Z)))
@@ -172,47 +171,44 @@ def main():
     print("X1 start")
     t_X1_tr = t_X1[ind_tr]
     t_X1_te = t_X1[ind_val]
-    np.save("//grand/RAPINS/ruike/new_hbb/npy_data1/data_X1_tr.npy",t_X1_tr)
-    np.save("//grand/RAPINS/ruike/new_hbb/npy_data1/data_X1_te.npy",t_X1_te)
+    np.save("//grand/RAPINS/ruike/npy_data1/data_X1_tr.npy",t_X1_tr)
+    np.save("//grand/RAPINS/ruike/npy_data1/data_X1_te.npy",t_X1_te)
     del t_X1
 
     print("X2")
     t_X2_tr = t_X2[ind_tr]
     t_X2_te = t_X2[ind_val]
-    np.save("//grand/RAPINS/ruike/new_hbb/npy_data1/data_X2_tr.npy",t_X2_tr)
-    np.save("//grand/RAPINS/ruike/new_hbb/npy_data1/data_X2_te.npy",t_X2_te)
+    np.save("//grand/RAPINS/ruike/npy_data1/data_X2_tr.npy",t_X2_tr)
+    np.save("//grand/RAPINS/ruike/npy_data1/data_X2_te.npy",t_X2_te)
     del t_X2
 
     print("X3")
     t_X3_tr = t_X3[ind_tr]
     t_X3_te = t_X3[ind_val]
-    np.save("//grand/RAPINS/ruike/new_hbb/npy_data1/data_X3_tr.npy",t_X3_tr)
-    np.save("//grand/RAPINS/ruike/new_hbb/npy_data1/data_X3_te.npy",t_X3_te)
+    np.save("//grand/RAPINS/ruike/npy_data1/data_X3_tr.npy",t_X3_tr)
+    np.save("//grand/RAPINS/ruike/npy_data1/data_X3_te.npy",t_X3_te)
     del t_X3
 
     print("X4")
     t_X4_tr = t_X4[ind_tr]
     t_X4_te = t_X4[ind_val]
-    np.save("//grand/RAPINS/ruike/new_hbb/npy_data1/data_X4_tr.npy",t_X4_tr)
-    np.save("//grand/RAPINS/ruike/new_hbb/npy_data1/data_X4_te.npy",t_X4_te)
+    np.save("//grand/RAPINS/ruike/npy_data1/data_X4_tr.npy",t_X4_tr)
+    np.save("//grand/RAPINS/ruike/npy_data1/data_X4_te.npy",t_X4_te)
     del t_X4
 
     print("Y")
     t_Y_tr = t_Y[ind_tr]
     t_Y_te = t_Y[ind_val]
-    np.save("//grand/RAPINS/ruike/new_hbb/npy_data1/data_Y_tr.npy",t_Y_tr)
-    np.save("//grand/RAPINS/ruike/new_hbb/npy_data1/data_Y_te.npy",t_Y_te)
+    np.save("//grand/RAPINS/ruike/npy_data1/data_Y_tr.npy",t_Y_tr)
+    np.save("//grand/RAPINS/ruike/npy_data1/data_Y_te.npy",t_Y_te)
     del t_Y
 
     print("Z")
     t_Z_tr = t_Z[ind_tr]
     t_Z_te = t_Z[ind_val]
-    np.save("//grand/RAPINS/ruike/new_hbb/npy_data1/data_Z_tr.npy",t_Z_tr)
-    np.save("//grand/RAPINS/ruike/new_hbb/npy_data1/data_Z_te.npy",t_Z_te)
+    np.save("//grand/RAPINS/ruike/npy_data1/data_Z_tr.npy",t_Z_tr)
+    np.save("//grand/RAPINS/ruike/npy_data1/data_Z_te.npy",t_Z_te)
     del t_Z
-
-
-    #del t_X1,t_X2,t_X3,t_X4,t_Y,t_Z
 
 
     print("splitting done")
@@ -244,7 +240,7 @@ def main():
     print('byte size for t_Z_te',  np.shape(t_Z_te[0]))#t_Z_tr[0].itemsize*
 
 
-    print("!!!11",len(t_X_te),np.shape(t_X_te[0]),np.shape(t_X_te[1]),np.shape(t_X_te[2]),np.shape(t_X_te[3]),len(t_Y_te),len(t_Z_te))
+    print("all done",len(t_X_te),np.shape(t_X_te[0]),np.shape(t_X_te[1]),np.shape(t_X_te[2]),np.shape(t_X_te[3]),len(t_Y_te),len(t_Z_te))
  
 
 if __name__ == "__main__":

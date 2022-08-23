@@ -12,9 +12,8 @@ import argparse
 import sklearn.metrics as _m
 import sklearn.model_selection
 
-import sys 
-sys.path.append("..") 
-from src.models.models import GraphNet
+ 
+from models import GraphNet
 
 
 #sys.path.insert(0, '/nfshome/jduarte/DL4Jets/mpi_learn/mpi_learn/train')
@@ -108,39 +107,11 @@ def main(args):
     params = params_2
     params_sv = params_3
     
-    #files = glob.glob(train_path + "/newdata_*.h5")
-    # files_val = files[:5] # take first 5 for validation
-    #files_train = files # take rest for training
-    
     label = 'new'
     outdir = args.outdir
     vv_branch = args.vv_branch
     sv_branch = args.sv_branch
     os.system('mkdir -p %s'%outdir)
-
-    #batch_size =2487886 # 5253944  #
-    #data_train = H5Data(batch_size = batch_size,
-    #                     cache = None,
-    #                     preloading=0,
-    #                     features_name='training_subgroup', 
-    #                     labels_name='target_subgroup',
-    #                     spectators_name='spectator_subgroup')
-    #data_train.set_file_names(files_train)
-    # data_val = H5Data(batch_size = batch_size,
-    #                   cache = None,
-    #                   preloading=0,
-    #                   features_name='training_subgroup', 
-    #                   labels_name='target_subgroup',
-    #                   spectators_name='spectator_subgroup')
-    # data_val.set_file_names(files_val)
-
-    # n_val=data_val.count_data()
-    # n_train=data_train.count_data()
-    # batch_size = n_train
-    # print("val data:", n_val)
-    # print("train data:", n_train)
-
-    # Three implementations of IN with GraphNet being default
 
     
     if sv_branch: 
@@ -179,21 +150,21 @@ def main(args):
     import time
     
     
-    t_X1_tr = np.load("//grand/RAPINS/ruike/new_hbb/npy_data1/data_X1_tr.npy")
-    t_X2_tr = np.load("//grand/RAPINS/ruike/new_hbb/npy_data1/data_X2_tr.npy")
-    t_X3_tr = np.load("//grand/RAPINS/ruike/new_hbb/npy_data1/data_X3_tr.npy")
+    t_X1_tr = np.load("//grand/RAPINS/ruike/npy_data1/data_X1_tr.npy")
+    t_X2_tr = np.load("//grand/RAPINS/ruike/npy_data1/data_X2_tr.npy")
+    t_X3_tr = np.load("//grand/RAPINS/ruike/npy_data1/data_X3_tr.npy")
     
-    t_X4_tr = np.load("//grand/RAPINS/ruike/new_hbb/npy_data1/data_X4_tr.npy")
-    t_Y_tr = np.load("//grand/RAPINS/ruike/new_hbb/npy_data1/data_Y_tr.npy")
-    t_Z_tr = np.load("//grand/RAPINS/ruike/new_hbb/npy_data1/data_Z_tr.npy")
+    t_X4_tr = np.load("//grand/RAPINS/ruike/npy_data1/data_X4_tr.npy")
+    t_Y_tr = np.load("//grand/RAPINS/ruike/npy_data1/data_Y_tr.npy")
+    t_Z_tr = np.load("//grand/RAPINS/ruike/npy_data1/data_Z_tr.npy")
     
-    t_X1_te = np.load("//grand/RAPINS/ruike/new_hbb/npy_data1/data_X1_te.npy")
-    t_X2_te = np.load("//grand/RAPINS/ruike/new_hbb/npy_data1/data_X2_te.npy")
-    t_X3_te = np.load("//grand/RAPINS/ruike/new_hbb/npy_data1/data_X3_te.npy")
+    t_X1_te = np.load("//grand/RAPINS/ruike/npy_data1/data_X1_te.npy")
+    t_X2_te = np.load("//grand/RAPINS/ruike/npy_data1/data_X2_te.npy")
+    t_X3_te = np.load("//grand/RAPINS/ruike/npy_data1/data_X3_te.npy")
     
-    t_X4_te = np.load("//grand/RAPINS/ruike/new_hbb/npy_data1/data_X4_te.npy")
-    t_Y_te = np.load("//grand/RAPINS/ruike/new_hbb/npy_data1/data_Y_te.npy")
-    t_Z_te = np.load("//grand/RAPINS/ruike/new_hbb/npy_data1/data_Z_te.npy")
+    t_X4_te = np.load("//grand/RAPINS/ruike/npy_data1/data_X4_te.npy")
+    t_Y_te = np.load("//grand/RAPINS/ruike/npy_data1/data_Y_te.npy")
+    t_Z_te = np.load("//grand/RAPINS/ruike/npy_data1/data_Z_te.npy")
     
     print(np.shape( t_X1_tr))
     print(np.shape( t_X2_tr))
@@ -231,8 +202,7 @@ def main(args):
 
 
     print("!!!11",len(t_X_te),len(t_Y_te),len(t_Z_te))
-    # train_xyz = zip(t_X_tr,t_Y_tr,t_Z_tr)
-    # test_xyz = zip(t_X_te,t_Y_te,t_Z_te)
+  
 
     batch_size =128
     for m in range(n_epochs):
@@ -332,11 +302,11 @@ def main(args):
         print('Training Loss: ', l_training)
         val_targetv = np.concatenate(correct) #torch.FloatTensor(np.array(correct)).cuda()
         
-        torch.save(gnn.state_dict(), '%s/random_gnn_%s_last.pth'%(outdir,label))
+        torch.save(gnn.state_dict(), '../../models/trained_models/random_gnn_%s_last.pth'%label)
         if l_val < l_val_best:
             print("new best model")
             l_val_best = l_val
-            torch.save(gnn.state_dict(), '%s/random_gnn_%s_best.pth'%(outdir,label))
+            torch.save(gnn.state_dict(), '../../models/trained_models/random_gnn_%s_best.pth'%label)
             
         print(val_targetv.shape, predicted.shape)
 #         print(val_targetv, predicted)

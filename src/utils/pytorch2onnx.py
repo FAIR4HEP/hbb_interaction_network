@@ -8,21 +8,21 @@ import warnings
 import os
 import sys
 import time
+import glob
 import sklearn.metrics as _m
-from scipy.special import softmax
-from sklearn.metrics import roc_curve, roc_auc_score, accuracy_score
+
 
 import sys 
 sys.path.append("..") 
-from src.models.models import GraphNet
-import tqdm
+from models.models import GraphNet
 
-import glob
+
+
 sv_branch = 1
 N = 60 # number of charged particles
 N_sv = 5 # number of SVs 
 n_targets = 2 # number of classes
-save_path =  './temp_test/'#'./test_hbb/'#
+save_path = '//grand/RAPINS/ruike/new_hbb/test/'
 print( ort.get_device()  )
 
 params_2 = ['track_ptrel',     
@@ -79,10 +79,11 @@ test_2_arrays = []
 test_3_arrays = []
 target_test_arrays = []
 test_spec_arrays = []
-
-print("load start")
+    
 for test_file in sorted(glob.glob(save_path + 'test_*_features_2.npy')):
+    print(test_file)
     test_2_arrays.append(np.load(test_file))  
+print(np.shape(test_2_arrays))
 test_2 = np.concatenate(test_2_arrays)
 
 for test_file in sorted(glob.glob(save_path + 'test_*_features_3.npy')):
@@ -132,17 +133,21 @@ print("after",test_2.shape)
 print("after",test_3.shape)
 
 
-
 test = test_2
 params = params_2
 test_sv = test_3
 params_sv = params_3
+
 label = 'new'
 gnn = GraphNet(N, n_targets, len(params), 60, N_sv, len(params_sv),
                vv_branch=0, #int(args.vv_branch),
                De=20,#args.De,
                Do=24 ,#args.Do,
                softmax=True)
+
+
+gnn.load_state_dict(torch.load('../../models/trained_models/random_gnn_%s_last.pth'%(label), map_location=torch.device('cuda')))
+torch.save(gnn.state_dict(),'../../models/trained_models/random_gnn_%s_last.pth'%(label))
 
 
 torch_soft_res = []
@@ -153,97 +158,25 @@ pytorch_time=[]
 onnx_time=[]
 label_ =[]
 
-sample_size = 1800#000
+sample_size = 1800000 
 batch_size= 128 
-model_path = "./onnx_model/5_10_gnn_%s.onnx"%batch_size
+model_path = "../../models/trained_models/onnx_model/5_10_gnn_%s.onnx"%batch_size
 
+
+#build onnx model
 label_batch = label_all[1:1+batch_size]
 
+dummy_input_1 = torch.from_numpy(test[1:1+batch_size]).cuda()
+dummy_input_2 = torch.from_numpy(test_sv[1:1+batch_size]).cuda() 
 
-pbar = tqdm.tqdm(range(int(sample_size/batch_size)-1))
-for i in pbar:   
-    start_idx = i*batch_size
-    label_batch = label_all[1+start_idx:1+start_idx+batch_size]
-    
-    
-    dummy_input_1 = torch.from_numpy(test[1+start_idx:1+start_idx+batch_size]).cuda()
-    dummy_input_2 = torch.from_numpy(test_sv[1+start_idx:1+start_idx+batch_size]).cuda() 
-    
-    #use pytorch gnn to predict
-    start_time = time.perf_counter() 
-    out_test = gnn(dummy_input_1, dummy_input_2)
-    end_time = time.perf_counter() 
-    temp_=end_time-start_time
-    
-    pytorch_time.append(temp_)
-    
-       
-    # Load the ONNX model
-    dummy_input_1 = test[1+start_idx:1+start_idx+batch_size]
-    dummy_input_2 = test_sv[1+start_idx:1+start_idx+batch_size]
-    model = onnx.load(model_path)
-
-    # Check that the IR is well formed
-    onnx.checker.check_model(model)
-
-    # Print a human readable representation of the graph
-    ####print(onnx.helper.printable_graph(model.graph))
+input_names = ['input_cpf', 'input_sv']
+output_names = ['output1']
+torch.onnx.export(gnn, (dummy_input_1, dummy_input_2), model_path, verbose=True,
+                input_names = input_names, output_names = output_names,
+                export_params=True,    # store the trained parameter weights inside the model file
+                opset_version=11,      # the ONNX version to export the model to
+                dynamic_axes = {input_names[0]: {0: 'batch_size'}, 
+                            input_names[1]: {0: 'batch_size'}, 
+                            output_names[0]: {0: 'batch_size'}})
 
     
-    options = ort.SessionOptions()
-    options.intra_op_num_threads = 1
-    ort_session = ort.InferenceSession(model_path, options, providers=[('CUDAExecutionProvider')])
-
-    # compute ONNX Runtime output prediction
-    start_time = time.perf_counter()
-    ort_inputs = {ort_session.get_inputs()[0].name: dummy_input_1,
-              ort_session.get_inputs()[1].name: dummy_input_2}
-
-     
-    ort_outs = ort_session.run(None, ort_inputs)
-    end_time = time.perf_counter() 
-    #print(f"ONNXRuntime Inference in {toc - tic:0.4f} seconds")
-    time_ = end_time-start_time
-    onnx_time.append(time_)
-
-
-    temp_onnx_res = ort_outs[0].tolist()
-    temp_pytorch_res = out_test.cpu().detach().numpy().tolist()
-    
-    for x in label_batch:
-        label_.append(x.tolist())
-        
-    for x in temp_onnx_res:
-        onnx_res.append(x)
-        x_ = softmax(x, axis=0)
-        onnx_soft_res.append(x_.tolist())
-    for x in temp_pytorch_res:
-        torch_res.append(x)
-        x_ = softmax(x, axis=0)
-        torch_soft_res.append(x_.tolist())
-
-
-clip_onnx_soft_res = []
-clip_torch_soft_res=[]
-clip_label = []
-for i in range(len(label_)):
-    if [0.,0,] == label_[i]:
-        continue
-    else:
-        clip_onnx_soft_res.append(onnx_soft_res[i])
-        clip_torch_soft_res.append(torch_soft_res[i])
-        clip_label.append(label_[i])
-        
-
-# print(len(torch_res))
-
-fpr_o, tpr_o, thresholds_p = _m.roc_curve(np.array(clip_label)[:,1], np.array(clip_onnx_soft_res)[:,1])
-print("onnx acc",accuracy_score(np.array(clip_label)[:,1], np.array(clip_onnx_soft_res)[:,1]>0.5))
-print("onnx auc",_m.auc(fpr_o, tpr_o) ) 
-print("onnx",np.mean(onnx_time[1:]))
-
-print("#############################")
-fpr_p, tpr_p, thresholds_p = _m.roc_curve(np.array(clip_label)[:,1], np.array(clip_torch_soft_res)[:,1])
-print("torch acc",accuracy_score(np.array(clip_label)[:,1], np.array(clip_torch_soft_res)[:,1]>0.5))
-print("torch auc",_m.auc(fpr_p, tpr_p) ) 
-print("pytorch",np.mean(pytorch_time[1:]))

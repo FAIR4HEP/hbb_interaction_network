@@ -1,19 +1,14 @@
 import numpy as np
 import torch
-# import setGPU
-import argparse
 import onnx
 import onnxruntime as ort
-import warnings
-import os
 import sys
-import time
 import glob
 import sklearn.metrics as _m
 
 
-import sys 
-sys.path.append("..") 
+import sys
+sys.path.append("..")
 from models.models import GraphNet
 
 
@@ -82,7 +77,7 @@ test_spec_arrays = []
     
 for test_file in sorted(glob.glob(save_path + 'test_*_features_2.npy')):
     print(test_file)
-    test_2_arrays.append(np.load(test_file))  
+    test_2_arrays.append(np.load(test_file))
 print(np.shape(test_2_arrays))
 test_2 = np.concatenate(test_2_arrays)
 
@@ -97,10 +92,9 @@ test_spec = np.concatenate(test_spec_arrays)
 for test_file in sorted(glob.glob(save_path + 'test_*_truth_0.npy')):
     target_test_arrays.append(np.load(test_file))
 label_all = np.concatenate(target_test_arrays)
-        
-        
-print(len(label_all))        
-        
+
+print(len(label_all))
+
 
 test_2 = np.swapaxes(test_2, 1, 2)
 test_3 = np.swapaxes(test_3, 1, 2)
@@ -158,8 +152,8 @@ pytorch_time=[]
 onnx_time=[]
 label_ =[]
 
-sample_size = 1800000 
-batch_sizes= [200,400,600,800,1000,1200,1400,1500,1600,1800,2000,2200,2400,2600,3000,3400,3800,4200] 
+sample_size = 1800000
+batch_sizes= [200,400,600,800,1000,1200,1400,1500,1600,1800,2000,2200,2400,2600,3000,3400,3800,4200]
 
 for batch_size in batch_sizes:
     model_path = "../../models/trained_models/onnx_model/5_10_gnn_%s.onnx"%batch_size
@@ -169,7 +163,7 @@ for batch_size in batch_sizes:
     label_batch = label_all[1:1+batch_size]
 
     dummy_input_1 = torch.from_numpy(test[1:1+batch_size]).cuda()
-    dummy_input_2 = torch.from_numpy(test_sv[1:1+batch_size]).cuda() 
+    dummy_input_2 = torch.from_numpy(test_sv[1:1+batch_size]).cuda()
 
     input_names = ['input_cpf', 'input_sv']
     output_names = ['output1']

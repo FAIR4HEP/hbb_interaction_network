@@ -146,7 +146,7 @@ for batch_size in batch_sizes:
     dummy_input_2 = torch.from_numpy(test_sv[1:1+batch_size]).cuda()
     input_names = ['input_cpf', 'input_sv']
     output_names = ['output1']
-    
+
     torch.onnx.export(gnn, (dummy_input_1, dummy_input_2), model_path, verbose=True,
                     input_names = input_names, output_names = output_names,
                     export_params=True,    # store the trained parameter weights inside the model file

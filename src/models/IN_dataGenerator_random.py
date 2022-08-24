@@ -4,16 +4,16 @@ import argparse
 import os
 
 import numpy as np
-import pandas as pd
 import sklearn.metrics as _m
-import sklearn.model_selection
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import tqdm
-from torch.autograd.variable import *
 
 from models import GraphNet
+
+# from torch.autograd.variable import *
+
 
 # sys.path.insert(0, '/nfshome/jduarte/DL4Jets/mpi_learn/mpi_learn/train')
 print(torch.__version__)
@@ -97,10 +97,9 @@ params_3 = params_2[11:13]
 """
 
 
-def main(args):
+def main(args):  # noqa: C901
     """Main entry point of the app"""
     # Convert two sets into two branch with one set in both and one set in only one (Use for this file)
-    params_neu = params_1
     params = params_2
     params_sv = params_3
     label = "new"
@@ -116,7 +115,8 @@ def main(args):
     else:
         print("this is loading GraphNetnoSV")
     # Architecture with all-particles
-    # gnn = GraphNetAllParticle(N, N_neu, n_targets, len(params), len(params_neu), args.hidden, N_sv, len(params_sv),vv_branch=int(vv_branch), De=args.De, Do=args.Do)
+    # gnn = GraphNetAllParticle(N, N_neu, n_targets, len(params), len(params_neu),\
+    # args.hidden, N_sv, len(params_sv),vv_branch=int(vv_branch), De=args.De, Do=args.Do)
     # pre load best model
     # gnn.load_state_dict(torch.load('out/gnn_new_best.pth'))
 
@@ -127,10 +127,7 @@ def main(args):
     loss_std_training = np.zeros(n_epochs)
     loss_vals_validation = np.zeros(n_epochs)
     loss_std_validation = np.zeros(n_epochs)
-    acc_vals_training = np.zeros(n_epochs)
     acc_vals_validation = np.zeros(n_epochs)
-    acc_std_training = np.zeros(n_epochs)
-    acc_std_validation = np.zeros(n_epochs)
 
     final_epoch = 0
     l_val_best = 99999
@@ -196,19 +193,19 @@ def main(args):
         correct = []
         tic = time.perf_counter()
 
-        ####train################
+        # train################
         batch_num_tr = int(len(t_X_tr[1]) / batch_size)
         print("batch num, X_tr_1, batch_size: ", batch_num_tr, len(t_X_tr[1]), batch_size)
         for idx_ in tqdm.tqdm(range(batch_num_tr), total=batch_num_tr):
             if idx_ == batch_num_tr - 1:
                 training = t_X_tr[2][idx_ * batch_size : -1]
-                training_sv = t_X_tr[3][idx_ * batch_size : -1]  # sub_X[3]
+                training_sv = t_X_tr[3][idx_ * batch_size : -1]
                 target = t_Y_tr[0][idx_ * batch_size : -1]
                 spec = t_Z_tr[0][idx_ * batch_size : -1]
             else:
-                training = t_X_tr[2][idx_ * batch_size : (idx_ + 1) * batch_size]  # sub_X[2]
+                training = t_X_tr[2][idx_ * batch_size : (idx_ + 1) * batch_size]
                 # training_neu = sub_X[1]
-                training_sv = t_X_tr[3][idx_ * batch_size : (idx_ + 1) * batch_size]  # sub_X[3]
+                training_sv = t_X_tr[3][idx_ * batch_size : (idx_ + 1) * batch_size]
                 target = t_Y_tr[0][idx_ * batch_size : (idx_ + 1) * batch_size]
                 spec = t_Z_tr[0][idx_ * batch_size : (idx_ + 1) * batch_size]
 
@@ -224,28 +221,28 @@ def main(args):
             else:
                 out = gnn(trainingv.cuda())
 
-            l = loss(out, targetv.cuda())
+            l = loss(out, targetv.cuda())  # noqa: E741
             loss_training.append(l.item())
             l.backward()
             optimizer.step()
-            loss_string = "Loss: %s" % "{0:.5f}".format(l.item())
+            # loss_string = "Loss: %s" % "{0:.5f}".format(l.item())
             del trainingv, trainingv_sv, targetv, training, training_sv, target, spec
         toc = time.perf_counter()
         print(f"Training done in {toc - tic:0.4f} seconds")
         tic = time.perf_counter()
 
-        ##########test###################
+        # test###################
         batch_num = int(len(t_X_te[1]) / batch_size)
-        for idx_ in tqdm.tqdm(range(batch_num), total=batch_num):  ###
+        for idx_ in tqdm.tqdm(range(batch_num), total=batch_num):
             if idx_ == batch_num - 1:
                 training = t_X_te[2][idx_ * batch_size : -1]
-                training_sv = t_X_te[3][idx_ * batch_size : -1]  # sub_X[3]
+                training_sv = t_X_te[3][idx_ * batch_size : -1]
                 target = t_Y_te[0][idx_ * batch_size : -1]
                 spec = t_Z_te[0][idx_ * batch_size : -1]
             else:
-                training = t_X_te[2][idx_ * batch_size : (idx_ + 1) * batch_size]  # sub_X[2]
+                training = t_X_te[2][idx_ * batch_size : (idx_ + 1) * batch_size]
                 # training_neu = sub_X[1]
-                training_sv = t_X_te[3][idx_ * batch_size : (idx_ + 1) * batch_size]  # sub_X[3]
+                training_sv = t_X_te[3][idx_ * batch_size : (idx_ + 1) * batch_size]
                 target = t_Y_te[0][idx_ * batch_size : (idx_ + 1) * batch_size]
                 spec = t_Z_te[0][idx_ * batch_size : (idx_ + 1) * batch_size]
 
@@ -263,7 +260,7 @@ def main(args):
             lst.append(softmax(out).cpu().data.numpy())
             l_val = loss(out, targetv.cuda())
             loss_val.append(l_val.item())
-            targetv_cpu = targetv.cpu().data.numpy()
+            # targetv_cpu = targetv.cpu().data.numpy()
             correct.append(target)
             del trainingv, trainingv_sv, targetv, training, training_sv, target, spec
 

@@ -2,13 +2,11 @@ import glob
 import sys
 
 import numpy as np
-import onnx
 import onnxruntime as ort
-import sklearn.metrics as _m
 import torch
 
 sys.path.append("..")
-from models.models import GraphNet
+from models.models import GraphNet  # noqa: E402
 
 sv_branch = 1
 N = 60  # number of charged particles

@@ -1,13 +1,4 @@
-import time
-
-import numpy as np
-import pycuda.driver as cuda
-
-# from gpu_log import get_gpu_log
-import sklearn.metrics as _m
 import tensorrt as trt
-from scipy.special import softmax
-from sklearn.metrics import accuracy_score, roc_auc_score, roc_curve
 
 
 #####

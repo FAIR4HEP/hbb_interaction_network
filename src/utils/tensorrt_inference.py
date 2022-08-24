@@ -158,7 +158,7 @@ for batch_size in batch_sizes:
                 clip_label.append(label_[i])
 
         fpr, tpr, thresholds = _m.roc_curve(np.array(clip_label)[:, 1], np.array(clip_soft_res)[:, 1])
-        auc = _m.auc(fpr, tpr)  ##roc_score
+        auc = _m.auc(fpr, tpr)  # roc_score
         print("auc:%.9f" % auc)
         print("acc %.9f" % accuracy_score(np.array(clip_label)[:, 1], np.array(clip_soft_res)[:, 1] > 0.5))
         print("time %.9f" % np.mean(time_arr[:]))

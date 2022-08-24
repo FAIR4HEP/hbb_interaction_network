@@ -1,3 +1,4 @@
+import glob
 import sys
 import time
 
@@ -8,21 +9,18 @@ import onnx
 import onnxruntime as ort
 import sklearn.metrics as _m
 import torch
+import tqdm
 from scipy.special import softmax
 from sklearn.metrics import accuracy_score
 
 sys.path.append("..")
-import glob
-
-import tqdm
-
-from models.models import GraphNet
+from models.models import GraphNet  # noqa: E402
 
 sv_branch = 1
 N = 60  # number of charged particles
 N_sv = 5  # number of SVs
 n_targets = 2  # number of classes
-save_path = "//grand/RAPINS/ruike/new_hbb/test/"  #'./test_hbb/'#
+save_path = "//grand/RAPINS/ruike/new_hbb/test/"  # './test_hbb/'#
 print(ort.get_device())
 
 params_2 = [
@@ -208,7 +206,7 @@ for i in pbar:
     onnx.checker.check_model(model)
 
     # Print a human readable representation of the graph
-    ####print(onnx.helper.printable_graph(model.graph))
+    # print(onnx.helper.printable_graph(model.graph))
 
     options = ort.SessionOptions()
     options.intra_op_num_threads = 1

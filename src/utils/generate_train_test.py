@@ -1,26 +1,17 @@
 from __future__ import print_function
 
+import glob
 import os
-
-# import setGPU
 import sys
 
+# import setGPU
 import numpy as np
-import pandas as pd
-import torch
-import torch.nn as nn
-import torch.optim as optim
-from torch.autograd.variable import *
-
-sys.path.append("..")
-import argparse
-import glob
-
-import sklearn.metrics as _m
 import sklearn.model_selection
+import torch
 import tqdm
 
-from data.h5data import H5Data
+sys.path.append("..")
+from data.h5data import H5Data  # noqa: E402
 
 # sys.path.insert(0, '/nfshome/jduarte/DL4Jets/mpi_learn/mpi_learn/train')
 print(torch.__version__)
@@ -111,7 +102,7 @@ def main():
     files = glob.glob(train_path + "/newdata_*.h5")
     # files_val = files[:5] # take first 5 for validation
     files_train = files  # take rest for training
-    label = "new"
+    # label = "new"
     batch_size = 5229076  # number of all data samples
     data_train = H5Data(
         batch_size=batch_size,
@@ -158,7 +149,7 @@ def main():
     end_time = time.time()
     print("time for load data:", end_time - start_time)
 
-    ### split using rand
+    # split using rand
     print(len(t_Z))
 
     print("splitting test and train!")

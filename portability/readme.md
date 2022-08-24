@@ -40,5 +40,3 @@
 
 5. throughput & gpu throughput plot   
     the plots are saved in *throughput_gpu_use.ipynb* file
-            
-        

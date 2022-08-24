@@ -3,8 +3,6 @@ import sys
 import time
 
 import numpy as np
-
-# import setGPU
 import onnx
 import onnxruntime as ort
 import sklearn.metrics as _m
@@ -12,6 +10,8 @@ import torch
 import tqdm
 from scipy.special import softmax
 from sklearn.metrics import accuracy_score
+
+# import setGPU
 
 sys.path.append("..")
 from models.models import GraphNet  # noqa: E402

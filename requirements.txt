@@ -1,19 +1,21 @@
 --extra-index-url https://download.pytorch.org/whl/cpu
 # local package
 -e .
+awkward
 awscli
 
-cernopendata-client[pycurl]
+cernopendata-client[pycurl,xrootd]
 
 # external requirements
 click
 coverage
 flake8
 h5py
-
 numpy
 python-dotenv>=0.5.1
 scikit-learn
+setGPU
+Sphinx
 sphinx>=3.2.1
 sphinx_rtd_theme
 toposort>=1.5.0
@@ -21,3 +23,5 @@ torch
 torchaudio
 torchvision
 tqdm
+uproot
+xrootd

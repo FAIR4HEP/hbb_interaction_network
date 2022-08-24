@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 # import setGPU
 
-import sys 
+import sys
 sys.path.append("..")
 from data.h5data import H5Data 
 
@@ -19,7 +19,7 @@ import sklearn.metrics as _m
 import sklearn.model_selection
 
 #sys.path.insert(0, '/nfshome/jduarte/DL4Jets/mpi_learn/mpi_learn/train')
-print(torch.__version__) 
+print(torch.__version__)
 
 os.environ['HDF5_USE_FILE_LOCKING'] = 'FALSE'
 test_path ='//grand/RAPINS/ruike/new_hbb/test/'
@@ -241,7 +241,7 @@ def main():
 
 
     print("all done",len(t_X_te),np.shape(t_X_te[0]),np.shape(t_X_te[1]),np.shape(t_X_te[2]),np.shape(t_X_te[3]),len(t_Y_te),len(t_Z_te))
- 
+
 
 if __name__ == "__main__":
     """ This is executed when run from the command line """

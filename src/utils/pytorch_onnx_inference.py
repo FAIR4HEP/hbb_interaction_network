@@ -1,58 +1,55 @@
 import numpy as np
 import torch
 # import setGPU
-import argparse
 import onnx
 import onnxruntime as ort
-import warnings
-import os
 import time
 import sklearn.metrics as _m
 from scipy.special import softmax
-from sklearn.metrics import roc_curve, roc_auc_score, accuracy_score
+from sklearn.metrics import accuracy_score
 
-import sys 
-sys.path.append("..") 
+import sys
+sys.path.append("..")
 from models.models import GraphNet
 import tqdm
 
 import glob
 sv_branch = 1
 N = 60 # number of charged particles
-N_sv = 5 # number of SVs 
+N_sv = 5 # number of SVs
 n_targets = 2 # number of classes
 save_path =  '//grand/RAPINS/ruike/new_hbb/test/'#'./test_hbb/'#
-print( ort.get_device()  )
+print( ort.get_device())
 
-params_2 = ['track_ptrel',     
-          'track_erel',     
-          'track_phirel',     
-          'track_etarel',     
+params_2 = ['track_ptrel',
+          'track_erel',
+          'track_phirel',
+          'track_etarel',
           'track_deltaR',
-          'track_drminsv',     
-          'track_drsubjet1',     
+          'track_drminsv',
+          'track_drsubjet1',
           'track_drsubjet2',
-          'track_dz',     
-          'track_dzsig',     
-          'track_dxy',     
-          'track_dxysig',     
-          'track_normchi2',     
-          'track_quality',     
-          'track_dptdpt',     
-          'track_detadeta',     
-          'track_dphidphi',     
-          'track_dxydxy',     
-          'track_dzdz',     
-          'track_dxydz',     
-          'track_dphidxy',     
-          'track_dlambdadz',     
-          'trackBTag_EtaRel',     
-          'trackBTag_PtRatio',     
-          'trackBTag_PParRatio',     
-          'trackBTag_Sip2dVal',     
-          'trackBTag_Sip2dSig',     
-          'trackBTag_Sip3dVal',     
-          'trackBTag_Sip3dSig',     
+          'track_dz',
+          'track_dzsig',
+          'track_dxy',
+          'track_dxysig',
+          'track_normchi2',
+          'track_quality',
+          'track_dptdpt',
+          'track_detadeta',
+          'track_dphidphi',
+          'track_dxydxy',
+          'track_dzdz',
+          'track_dxydz',
+          'track_dphidxy',
+          'track_dlambdadz',
+          'trackBTag_EtaRel',
+          'trackBTag_PtRatio',
+          'trackBTag_PParRatio',
+          'trackBTag_Sip2dVal',
+          'trackBTag_Sip2dSig',
+          'trackBTag_Sip3dVal',
+          'trackBTag_Sip3dSig',
           'trackBTag_JetDistVal'
          ]
 
@@ -81,7 +78,7 @@ test_spec_arrays = []
 
 print("load start")
 for test_file in sorted(glob.glob(save_path + 'test_*_features_2.npy')):
-    test_2_arrays.append(np.load(test_file))  
+    test_2_arrays.append(np.load(test_file))
 test_2 = np.concatenate(test_2_arrays)
 
 for test_file in sorted(glob.glob(save_path + 'test_*_features_3.npy')):
@@ -95,10 +92,8 @@ test_spec = np.concatenate(test_spec_arrays)
 for test_file in sorted(glob.glob(save_path + 'test_*_truth_0.npy')):
     target_test_arrays.append(np.load(test_file))
 label_all = np.concatenate(target_test_arrays)
-        
-        
-print(len(label_all))        
-        
+
+print(len(label_all))
 
 test_2 = np.swapaxes(test_2, 1, 2)
 test_3 = np.swapaxes(test_3, 1, 2)
@@ -154,25 +149,24 @@ onnx_time=[]
 label_ =[]
 
 sample_size = 1800#000
-batch_size= 128 
+batch_size= 128
 model_path = "../../models/trained_models/onnx_model/5_10_gnn_%s.onnx"%batch_size
 
 label_batch = label_all[1:1+batch_size]
 
 
 pbar = tqdm.tqdm(range(int(sample_size/batch_size)-1))
-for i in pbar:   
+for i in pbar:
     start_idx = i*batch_size
     label_batch = label_all[1+start_idx:1+start_idx+batch_size]
-    
-    
+
     dummy_input_1 = torch.from_numpy(test[1+start_idx:1+start_idx+batch_size]).cuda()
-    dummy_input_2 = torch.from_numpy(test_sv[1+start_idx:1+start_idx+batch_size]).cuda() 
+    dummy_input_2 = torch.from_numpy(test_sv[1+start_idx:1+start_idx+batch_size]).cuda()
     
     #use pytorch gnn to predict
-    start_time = time.perf_counter() 
+    start_time = time.perf_counter()
     out_test = gnn(dummy_input_1, dummy_input_2)
-    end_time = time.perf_counter() 
+    end_time = time.perf_counter()
     temp_=end_time-start_time
     
     pytorch_time.append(temp_)
@@ -201,7 +195,7 @@ for i in pbar:
 
      
     ort_outs = ort_session.run(None, ort_inputs)
-    end_time = time.perf_counter() 
+    end_time = time.perf_counter()
     #print(f"ONNXRuntime Inference in {toc - tic:0.4f} seconds")
     time_ = end_time-start_time
     onnx_time.append(time_)
@@ -233,17 +227,16 @@ for i in range(len(label_)):
         clip_onnx_soft_res.append(onnx_soft_res[i])
         clip_torch_soft_res.append(torch_soft_res[i])
         clip_label.append(label_[i])
-        
 
 # print(len(torch_res))
 
 fpr_o, tpr_o, thresholds_p = _m.roc_curve(np.array(clip_label)[:,1], np.array(clip_onnx_soft_res)[:,1])
 print("onnx acc",accuracy_score(np.array(clip_label)[:,1], np.array(clip_onnx_soft_res)[:,1]>0.5))
-print("onnx auc",_m.auc(fpr_o, tpr_o) ) 
+print("onnx auc",_m.auc(fpr_o, tpr_o))
 print("onnx",np.mean(onnx_time[1:]))
 
 print("#############################")
 fpr_p, tpr_p, thresholds_p = _m.roc_curve(np.array(clip_label)[:,1], np.array(clip_torch_soft_res)[:,1])
 print("torch acc",accuracy_score(np.array(clip_label)[:,1], np.array(clip_torch_soft_res)[:,1]>0.5))
-print("torch auc",_m.auc(fpr_p, tpr_p) ) 
+print("torch auc",_m.auc(fpr_p, tpr_p))
 print("pytorch",np.mean(pytorch_time[1:]))

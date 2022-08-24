@@ -183,4 +183,4 @@ class GraphNet(nn.Module):
         x_shape = x.size()
         y_shape = y.size()
         #need to change to reshape when onnx
-        return torch.mm(x.view(-1, x_shape[2]), y).view(-1, x_shape[1], y_shape[1])  
+        return torch.mm(x.reshape(-1, x_shape[2]), y).reshape(-1, x_shape[1], y_shape[1])  

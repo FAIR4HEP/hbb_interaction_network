@@ -159,24 +159,26 @@ onnx_time=[]
 label_ =[]
 
 sample_size = 1800000 
-batch_size= 128 
-model_path = "../../models/trained_models/onnx_model/5_10_gnn_%s.onnx"%batch_size
+batch_sizes= [200,400,600,800,1000,1200,1400,1500,1600,1800,2000,2200,2400,2600,3000,3400,3800,4200] 
+
+for batch_size in batch_sizes:
+    model_path = "../../models/trained_models/onnx_model/5_10_gnn_%s.onnx"%batch_size
 
 
-#build onnx model
-label_batch = label_all[1:1+batch_size]
+    #build onnx model
+    label_batch = label_all[1:1+batch_size]
 
-dummy_input_1 = torch.from_numpy(test[1:1+batch_size]).cuda()
-dummy_input_2 = torch.from_numpy(test_sv[1:1+batch_size]).cuda() 
+    dummy_input_1 = torch.from_numpy(test[1:1+batch_size]).cuda()
+    dummy_input_2 = torch.from_numpy(test_sv[1:1+batch_size]).cuda() 
 
-input_names = ['input_cpf', 'input_sv']
-output_names = ['output1']
-torch.onnx.export(gnn, (dummy_input_1, dummy_input_2), model_path, verbose=True,
-                input_names = input_names, output_names = output_names,
-                export_params=True,    # store the trained parameter weights inside the model file
-                opset_version=11,      # the ONNX version to export the model to
-                dynamic_axes = {input_names[0]: {0: 'batch_size'}, 
-                            input_names[1]: {0: 'batch_size'}, 
-                            output_names[0]: {0: 'batch_size'}})
+    input_names = ['input_cpf', 'input_sv']
+    output_names = ['output1']
+    torch.onnx.export(gnn, (dummy_input_1, dummy_input_2), model_path, verbose=True,
+                    input_names = input_names, output_names = output_names,
+                    export_params=True,    # store the trained parameter weights inside the model file
+                    opset_version=11,      # the ONNX version to export the model to
+                    dynamic_axes = {input_names[0]: {0: 'batch_size'}, 
+                                input_names[1]: {0: 'batch_size'}, 
+                                output_names[0]: {0: 'batch_size'}})
 
-    
+

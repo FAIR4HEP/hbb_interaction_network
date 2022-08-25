@@ -225,9 +225,9 @@ def main(args):  # noqa: C901
             training = sub_X[2]
             training_sv = sub_X[3]
             target = sub_Y[0]
-            trainingv = (torch.FloatTensor(training)).cuda()
-            trainingv_sv = (torch.FloatTensor(training_sv)).cuda()
-            targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).cuda()
+            trainingv = (torch.FloatTensor(training)).to(device)
+            trainingv_sv = (torch.FloatTensor(training_sv)).to(device)
+            targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).to(device)
             if drop_rate > 0:
                 keep_indices = targetv == 0
                 sig_count += batch_size - torch.sum(keep_indices).item()
@@ -247,8 +247,8 @@ def main(args):  # noqa: C901
                 trainingv_sv = trainingv_sv[:, keep_features, :]
 
             optimizer.zero_grad()
-            out = gnn(trainingv.cuda(), trainingv_sv.cuda())
-            batch_loss = loss(out, targetv.cuda())
+            out = gnn(trainingv.to(device), trainingv_sv.to(device))
+            batch_loss = loss(out, targetv.to(device))
             loss_training.append(batch_loss.item())
             batch_loss.backward()
             optimizer.step()
@@ -264,9 +264,9 @@ def main(args):  # noqa: C901
             training = sub_X[2]
             training_sv = sub_X[3]
             target = sub_Y[0]
-            trainingv = (torch.FloatTensor(training)).cuda()
-            trainingv_sv = (torch.FloatTensor(training_sv)).cuda()
-            targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).cuda()
+            trainingv = (torch.FloatTensor(training)).to(device)
+            trainingv_sv = (torch.FloatTensor(training_sv)).to(device)
+            targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).to(device)
 
             if len(drop_pfeatures) > 0:
                 keep_features = [i for i in np.arange(0, len(params), 1, dtype=int) if i not in drop_pfeatures]
@@ -275,10 +275,10 @@ def main(args):  # noqa: C901
                 keep_features = [i for i in np.arange(0, len(params_sv), 1, dtype=int) if i not in drop_svfeatures]
                 trainingv_sv = trainingv_sv[:, keep_features, :]
 
-            out = gnn(trainingv.cuda(), trainingv_sv.cuda())
+            out = gnn(trainingv.to(device), trainingv_sv.to(device))
 
             lst.append(softmax(out).cpu().data.numpy())
-            l_val = loss(out, targetv.cuda())
+            l_val = loss(out, targetv.to(device))
             loss_val.append(l_val.item())
 
             correct.append(target)

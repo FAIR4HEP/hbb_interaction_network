@@ -17,7 +17,7 @@ class GraphNet(nn.Module):
         De=5,
         Do=6,
         softmax=False,
-        device='cpu'
+        device='cpu',
     ):
         super(GraphNet, self).__init__()
         self.hidden = int(hidden)

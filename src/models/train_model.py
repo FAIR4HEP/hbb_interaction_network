@@ -6,8 +6,13 @@ import json
 import os
 from pathlib import Path
 
+device = "cpu"
+if device == "cpu":
+    pass
+else:
+    import setGPU # noqa: F401
+
 import numpy as np
-import setGPU  # noqa: F401
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -28,7 +33,6 @@ with open(definitions) as yaml_file:
 N = defn["nobj_2"]  # number of charged particles
 N_sv = defn["nobj_3"]  # number of SVs
 n_targets = len(defn["reduced_labels"])  # number of classes
-device = "cpu"
 params = defn["features_2"]
 params_sv = defn["features_3"]
 
@@ -115,6 +119,7 @@ def main(args):  # noqa: C901
         vv_branch=int(vv_branch),
         De=args.De,
         Do=args.Do,
+        device = device,
     )
 
     """
@@ -127,6 +132,7 @@ def main(args):  # noqa: C901
          vv_branch = to allow vv_branch ? (0 or False by default)
          De = Output dimension of particle-particle interaction NN (fR)
          Do = Output dimension of pre-aggregator transformation NN (fO)
+         device = device to train model (default cpu)
     """
 
     if load_def:

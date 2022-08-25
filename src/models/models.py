@@ -41,28 +41,28 @@ class GraphNet(nn.Module):
             self.assign_matrices_SVSV()
 
         self.Ra = torch.ones(self.Dr, self.Nr)
-        self.fr1 = nn.Linear(2 * self.P + self.Dr, self.hidden).device(self.device)
-        self.fr2 = nn.Linear(self.hidden, int(self.hidden)).device(self.device)
-        self.fr3 = nn.Linear(int(self.hidden), self.De).device(self.device)
-        self.fr1_pv = nn.Linear(self.S + self.P + self.Dr, self.hidden).device(self.device)
-        self.fr2_pv = nn.Linear(self.hidden, int(self.hidden)).device(self.device)
-        self.fr3_pv = nn.Linear(int(self.hidden), self.De).device(self.device)
+        self.fr1 = nn.Linear(2 * self.P + self.Dr, self.hidden).device(device)
+        self.fr2 = nn.Linear(self.hidden, int(self.hidden)).device(device)
+        self.fr3 = nn.Linear(int(self.hidden), self.De).device(device)
+        self.fr1_pv = nn.Linear(self.S + self.P + self.Dr, self.hidden).device(device)
+        self.fr2_pv = nn.Linear(self.hidden, int(self.hidden)).device(device)
+        self.fr3_pv = nn.Linear(int(self.hidden), self.De).device(device)
         if self.vv_branch:
-            self.fr1_vv = nn.Linear(2 * self.S + self.Dr, self.hidden).device(self.device)
-            self.fr2_vv = nn.Linear(self.hidden, int(self.hidden)).device(self.device)
-            self.fr3_vv = nn.Linear(int(self.hidden), self.De).device(self.device)
-        self.fo1 = nn.Linear(self.P + self.Dx + (2 * self.De), self.hidden).device(self.device)
-        self.fo2 = nn.Linear(self.hidden, int(self.hidden)).device(self.device)
-        self.fo3 = nn.Linear(int(self.hidden), self.Do).device(self.device)
+            self.fr1_vv = nn.Linear(2 * self.S + self.Dr, self.hidden).device(device)
+            self.fr2_vv = nn.Linear(self.hidden, int(self.hidden)).device(device)
+            self.fr3_vv = nn.Linear(int(self.hidden), self.De).device(device)
+        self.fo1 = nn.Linear(self.P + self.Dx + (2 * self.De), self.hidden).device(device)
+        self.fo2 = nn.Linear(self.hidden, int(self.hidden)).device(device)
+        self.fo3 = nn.Linear(int(self.hidden), self.Do).device(device)
         if self.vv_branch:
-            self.fo1_v = nn.Linear(self.S + self.Dx + (2 * self.De), self.hidden).device(self.device)
-            self.fo2_v = nn.Linear(self.hidden, int(self.hidden)).device(self.device)
-            self.fo3_v = nn.Linear(int(self.hidden), self.Do).device(self.device)
+            self.fo1_v = nn.Linear(self.S + self.Dx + (2 * self.De), self.hidden).device(device)
+            self.fo2_v = nn.Linear(self.hidden, int(self.hidden)).device(device)
+            self.fo3_v = nn.Linear(int(self.hidden), self.Do).device(device)
 
         if self.vv_branch:
-            self.fc_fixed = nn.Linear(2 * self.Do, self.n_targets).device(self.device)
+            self.fc_fixed = nn.Linear(2 * self.Do, self.n_targets).device(device)
         else:
-            self.fc_fixed = nn.Linear(self.Do, self.n_targets).device(self.device)
+            self.fc_fixed = nn.Linear(self.Do, self.n_targets).device(device)
 
     def assign_matrices(self):
         self.Rr = torch.zeros(self.N, self.Nr)

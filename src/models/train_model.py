@@ -44,7 +44,7 @@ def main(args):  # noqa: C901
 
     model_dict = {}
 
-     files = glob.glob(os.path.join(train_path, "newdata_*.h5"))
+    files = glob.glob(os.path.join(train_path, "newdata_*.h5"))
     files_val = files[:5]  # take first 5 for validation
     files_train = files[5:]  # take rest for training
 
@@ -278,15 +278,15 @@ def main(args):  # noqa: C901
                 idx_ = element
                 if idx_ == batch_num_tr -1:
                     training = t_X_tr[2][idx_*batch_size:-1]
-                    training_sv = t_X_tr[3][idx_*batch_size:-1] #sub_X[3]
+                    training_sv = t_X_tr[3][idx_*batch_size:-1] 
                     target = t_Y_tr[0][idx_*batch_size:-1]
                     trainingv = (torch.FloatTensor(training)).cuda()
                     trainingv_sv = (torch.FloatTensor(training_sv)).cuda()
                     targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).cuda()
 
                 else:
-                    training = t_X_tr[2][idx_*batch_size:(idx_+1)*batch_size]  #sub_X[2]
-                    training_sv = t_X_tr[3][idx_*batch_size:(idx_+1)*batch_size] #sub_X[3]
+                    training = t_X_tr[2][idx_*batch_size:(idx_+1)*batch_size]  
+                    training_sv = t_X_tr[3][idx_*batch_size:(idx_+1)*batch_size] 
                     target = t_Y_tr[0][idx_*batch_size:(idx_+1)*batch_size]
                     trainingv = (torch.FloatTensor(training)).cuda()
                     trainingv_sv = (torch.FloatTensor(training_sv)).cuda()
@@ -328,7 +328,7 @@ def main(args):  # noqa: C901
         #validate process
         if random_split == False:
             iterator = data_val.generate_data()
-            total_ = int(n_train / batch_size)
+            total_ = int(n_val / batch_size)
         else:
             batch_num_te = int(len(t_X_te[1])/batch_size)
             print("batch num, X_te_1, batch_size: ",batch_num_te ,len(t_X_te[1]), batch_size)
@@ -349,15 +349,15 @@ def main(args):  # noqa: C901
                 idx_ = element
                 if idx_ == batch_num_tr -1:
                     training = t_X_tr[2][idx_*batch_size:-1]
-                    training_sv = t_X_tr[3][idx_*batch_size:-1] #sub_X[3]
+                    training_sv = t_X_tr[3][idx_*batch_size:-1]
                     target = t_Y_tr[0][idx_*batch_size:-1]
                     trainingv = (torch.FloatTensor(training)).cuda()
                     trainingv_sv = (torch.FloatTensor(training_sv)).cuda()
                     targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).cuda()
 
                 else:
-                    training = t_X_tr[2][idx_*batch_size:(idx_+1)*batch_size]  #sub_X[2]
-                    training_sv = t_X_tr[3][idx_*batch_size:(idx_+1)*batch_size] #sub_X[3]
+                    training = t_X_tr[2][idx_*batch_size:(idx_+1)*batch_size] 
+                    training_sv = t_X_tr[3][idx_*batch_size:(idx_+1)*batch_size]
                     target = t_Y_tr[0][idx_*batch_size:(idx_+1)*batch_size]
                     trainingv = (torch.FloatTensor(training)).cuda()
                     trainingv_sv = (torch.FloatTensor(training_sv)).cuda()

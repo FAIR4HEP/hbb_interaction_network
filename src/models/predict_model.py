@@ -8,11 +8,10 @@ import onnxruntime as ort
 import setGPU  # noqa: F401
 import torch
 import tqdm
-# import yaml
+import yaml
 from scipy.special import softmax
 from sklearn.metrics import accuracy_score, roc_auc_score
 
-# from pathlib import Path
 
 
 project_dir = Path(__file__).resolve().parents[2]

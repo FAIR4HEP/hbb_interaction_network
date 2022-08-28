@@ -7,7 +7,6 @@ import os
 from pathlib import Path
 
 import numpy as np
-# import sys
 import setGPU  # noqa: F401
 import torch
 import torch.nn as nn
@@ -18,6 +17,7 @@ import yaml
 from src.data.h5data import H5Data
 from src.models.models import GraphNet
 
+# import sys
 # sys.path.append("..")
 # from data.h5data import H5Data     # noqa: E402
 # from models import GraphNet  # noqa: E402

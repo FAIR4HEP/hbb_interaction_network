@@ -22,7 +22,6 @@ from src.models.models import GraphNet
 # from data.h5data import H5Data     # noqa: E402
 # from models import GraphNet  # noqa: E402
 
-
 os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 
 project_dir = Path(__file__).resolve().parents[2]

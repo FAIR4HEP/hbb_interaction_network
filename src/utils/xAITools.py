@@ -1,62 +1,24 @@
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torch.nn as nn
+import yaml
 from sklearn.metrics import auc, precision_recall_curve, roc_curve
 
-params = [
-    "track_ptrel",
-    "track_erel",
-    "track_phirel",
-    "track_etarel",
-    "track_deltaR",
-    "track_drminsv",
-    "track_drsubjet1",
-    "track_drsubjet2",
-    "track_dz",
-    "track_dzsig",
-    "track_dxy",
-    "track_dxysig",
-    "track_normchi2",
-    "track_quality",
-    "track_dptdpt",
-    "track_detadeta",
-    "track_dphidphi",
-    "track_dxydxy",
-    "track_dzdz",
-    "track_dxydz",
-    "track_dphidxy",
-    "track_dlambdadz",
-    "trackBTag_EtaRel",
-    "trackBTag_PtRatio",
-    "trackBTag_PParRatio",
-    "trackBTag_Sip2dVal",
-    "trackBTag_Sip2dSig",
-    "trackBTag_Sip3dVal",
-    "trackBTag_Sip3dSig",
-    "trackBTag_JetDistVal",
-]
+project_dir = Path(__file__).resolve().parents[2]
+train_path = f"{project_dir}/data/processed/train/"
+definitions = f"{project_dir}/src/data/definitions.yml"
+with open(definitions) as yaml_file:
+    defn = yaml.load(yaml_file, Loader=yaml.FullLoader)
 
-params_sv = [
-    "sv_ptrel",
-    "sv_erel",
-    "sv_phirel",
-    "sv_etarel",
-    "sv_deltaR",
-    "sv_pt",
-    "sv_mass",
-    "sv_ntracks",
-    "sv_normchi2",
-    "sv_dxy",
-    "sv_dxysig",
-    "sv_d3d",
-    "sv_d3dsig",
-    "sv_costhetasvpv",
-]
+params = defn["features_2"]
+params_sv = defn["features_3"]
 
 softmax = torch.nn.Softmax(dim=1)
-Ntracks = 60
-Nverts = 5
+Ntracks = defn["nobj_2"]
+Nverts = defn["nobj_3"]
 
 
 def eval(  # noqa: C901

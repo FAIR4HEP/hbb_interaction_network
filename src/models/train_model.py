@@ -4,29 +4,29 @@ import argparse
 import glob
 import json
 import os
-
-import numpy as np
 from pathlib import Path
 
-import sys 
-# import setGPU  # noqa: F401
+import numpy as np
+# import sys
+import setGPU  # noqa: F401
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import tqdm
 import yaml
 
-sys.path.append("..")
-from data.h5data import H5Data     # noqa: E402
-from models import GraphNet  # noqa: E402
+from src.data.h5data import H5Data
+from src.models.models import GraphNet
 
-# from src.data.h5data import H5Data
-# from src.models.models import GraphNet
+# sys.path.append("..")
+# from data.h5data import H5Data     # noqa: E402
+# from models import GraphNet  # noqa: E402
+
 
 os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 
 project_dir = Path(__file__).resolve().parents[2]
-train_path = "//grand/RAPINS/ruike/new_hbb/train/" #f"{project_dir}/data/processed/train/"
+train_path = f"{project_dir}/data/processed/train/"  # "//grand/RAPINS/ruike/new_hbb/train/" #
 definitions = f"{project_dir}/src/data/definitions.yml"
 with open(definitions) as yaml_file:
     defn = yaml.load(yaml_file, Loader=yaml.FullLoader)
@@ -88,7 +88,7 @@ def main(args):  # noqa: C901
     f_model.close()
 
     # Get the training and validation data
-    if random_split == False:
+    if random_split is False:
         data_train = H5Data(
             batch_size=batch_size,
             cache=None,
@@ -130,19 +130,18 @@ def main(args):  # noqa: C901
         t_Z_te = np.load("//grand/RAPINS/ruike/npy_data1/data_Z_te.npy")
 
         # print("seperate converting finished")
-        t_X_tr =[t_X1_tr, t_X2_tr, t_X3_tr, t_X4_tr]
-        t_Y_tr=[t_Y_tr]
-        t_Z_tr =[t_Z_tr]
+        t_X_tr = [t_X1_tr, t_X2_tr, t_X3_tr, t_X4_tr]
+        t_Y_tr = [t_Y_tr]
+        t_Z_tr = [t_Z_tr]
         print("mid for train finish numpy convert")
-        t_X_te =[t_X1_te, t_X2_te, t_X3_te, t_X4_te]
-        t_Y_te=[t_Y_te]
-        t_Z_te =[t_Z_te]
+        t_X_te = [t_X1_te, t_X2_te, t_X3_te, t_X4_te]
+        t_Y_te = [t_Y_te]
+        t_Z_te = [t_Z_te]
 
         del t_X1_tr, t_X2_tr, t_X3_tr, t_X4_tr
         del t_X1_te, t_X2_te, t_X3_te, t_X4_te
 
-        print("!!!",len(t_X_te),len(t_Y_te),len(t_Z_te))
-  
+        print("!!!", len(t_X_te), len(t_Y_te), len(t_Z_te))
 
     gnn = GraphNet(
         n_constituents=N,
@@ -254,20 +253,20 @@ def main(args):  # noqa: C901
         tic = time.perf_counter()
         sig_count = 0
         data_dropped = 0
-        
-        #train process
-        if random_split == False:
+
+        # train process
+        if random_split is False:
             iterator = data_train.generate_data()
             total_ = int(n_train / batch_size)
         else:
-            batch_num_tr = int(len(t_X_tr[1])/batch_size)
-            print("batch num, X_tr_1, batch_size: ",batch_num_tr ,len(t_X_tr[1]), batch_size)
+            batch_num_tr = int(len(t_X_tr[1]) / batch_size)
+            print("batch num, X_tr_1, batch_size: ", batch_num_tr, len(t_X_tr[1]), batch_size)
             iterator = range(batch_num_tr)
             total_ = batch_num_tr
-                    
+
         for element in tqdm.tqdm(iterator, total=total_):
-            if random_split == False:
-                (sub_X, sub_Y, _ )=element
+            if random_split is False:
+                (sub_X, sub_Y, _) = element
                 training = sub_X[2]
                 training_sv = sub_X[3]
                 target = sub_Y[0]
@@ -276,22 +275,22 @@ def main(args):  # noqa: C901
                 targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).cuda()
             else:
                 idx_ = element
-                if idx_ == batch_num_tr -1:
-                    training = t_X_tr[2][idx_*batch_size:-1]
-                    training_sv = t_X_tr[3][idx_*batch_size:-1] 
-                    target = t_Y_tr[0][idx_*batch_size:-1]
+                if idx_ == batch_num_tr - 1:
+                    training = t_X_tr[2][idx_ * batch_size : -1]
+                    training_sv = t_X_tr[3][idx_ * batch_size : -1]
+                    target = t_Y_tr[0][idx_ * batch_size : -1]
                     trainingv = (torch.FloatTensor(training)).cuda()
                     trainingv_sv = (torch.FloatTensor(training_sv)).cuda()
                     targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).cuda()
 
                 else:
-                    training = t_X_tr[2][idx_*batch_size:(idx_+1)*batch_size]  
-                    training_sv = t_X_tr[3][idx_*batch_size:(idx_+1)*batch_size] 
-                    target = t_Y_tr[0][idx_*batch_size:(idx_+1)*batch_size]
+                    training = t_X_tr[2][idx_ * batch_size : (idx_ + 1) * batch_size]
+                    training_sv = t_X_tr[3][idx_ * batch_size : (idx_ + 1) * batch_size]
+                    target = t_Y_tr[0][idx_ * batch_size : (idx_ + 1) * batch_size]
                     trainingv = (torch.FloatTensor(training)).cuda()
                     trainingv_sv = (torch.FloatTensor(training_sv)).cuda()
                     targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).cuda()
-                    
+
             if drop_rate > 0:
                 keep_indices = targetv == 0
                 sig_count += batch_size - torch.sum(keep_indices).item()
@@ -321,24 +320,22 @@ def main(args):  # noqa: C901
         if drop_rate > 0.0:
             print("Signal Count: {}, Data Dropped: {}".format(sig_count, data_dropped))
         toc = time.perf_counter()
-#         print(f"Training done in {toc - tic:0.4f} seconds")
+        print(f"Training done in {toc - tic:0.4f} seconds")
         tic = time.perf_counter()
 
-        
-        #validate process
-        if random_split == False:
+        # validate process
+        if random_split is False:
             iterator = data_val.generate_data()
             total_ = int(n_val / batch_size)
         else:
-            batch_num_te = int(len(t_X_te[1])/batch_size)
-            print("batch num, X_te_1, batch_size: ",batch_num_te ,len(t_X_te[1]), batch_size)
+            batch_num_te = int(len(t_X_te[1]) / batch_size)
+            print("batch num, X_te_1, batch_size: ", batch_num_te, len(t_X_te[1]), batch_size)
             iterator = range(batch_num_te)
             total_ = batch_num_te
-            
-            
+
         for element in tqdm.tqdm(iterator, total=total_):
-            if random_split == False:
-                (sub_X, sub_Y, _ )=element
+            if random_split is False:
+                (sub_X, sub_Y, _) = element
                 training = sub_X[2]
                 training_sv = sub_X[3]
                 target = sub_Y[0]
@@ -347,22 +344,21 @@ def main(args):  # noqa: C901
                 targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).cuda()
             else:
                 idx_ = element
-                if idx_ == batch_num_tr -1:
-                    training = t_X_tr[2][idx_*batch_size:-1]
-                    training_sv = t_X_tr[3][idx_*batch_size:-1]
-                    target = t_Y_tr[0][idx_*batch_size:-1]
+                if idx_ == batch_num_tr - 1:
+                    training = t_X_tr[2][idx_ * batch_size : -1]
+                    training_sv = t_X_tr[3][idx_ * batch_size : -1]
+                    target = t_Y_tr[0][idx_ * batch_size : -1]
                     trainingv = (torch.FloatTensor(training)).cuda()
                     trainingv_sv = (torch.FloatTensor(training_sv)).cuda()
                     targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).cuda()
 
                 else:
-                    training = t_X_tr[2][idx_*batch_size:(idx_+1)*batch_size] 
-                    training_sv = t_X_tr[3][idx_*batch_size:(idx_+1)*batch_size]
-                    target = t_Y_tr[0][idx_*batch_size:(idx_+1)*batch_size]
+                    training = t_X_tr[2][idx_ * batch_size : (idx_ + 1) * batch_size]
+                    training_sv = t_X_tr[3][idx_ * batch_size : (idx_ + 1) * batch_size]
+                    target = t_Y_tr[0][idx_ * batch_size : (idx_ + 1) * batch_size]
                     trainingv = (torch.FloatTensor(training)).cuda()
                     trainingv_sv = (torch.FloatTensor(training_sv)).cuda()
                     targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).cuda()
- 
 
             if len(drop_pfeatures) > 0:
                 keep_features = [i for i in np.arange(0, len(params), 1, dtype=int) if i not in drop_pfeatures]
@@ -380,7 +376,7 @@ def main(args):  # noqa: C901
             correct.append(target)
             del trainingv, trainingv_sv, targetv
         toc = time.perf_counter()
-#         print(f"Evaluation done in {toc - tic:0.4f} seconds")
+        print(f"Evaluation done in {toc - tic:0.4f} seconds")
         l_val = np.mean(np.array(loss_val))
 
         predicted = np.concatenate(lst)

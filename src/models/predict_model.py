@@ -12,8 +12,6 @@ import yaml
 from scipy.special import softmax
 from sklearn.metrics import accuracy_score, roc_auc_score
 
-
-
 project_dir = Path(__file__).resolve().parents[2]
 save_path_test = f"{project_dir}/data/processed/test/"
 definitions = f"{project_dir}/src/data/definitions.yml"

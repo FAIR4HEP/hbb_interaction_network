@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 
 import numpy as np
+
 # import sys
 import setGPU  # noqa: F401
 import torch
@@ -26,7 +27,7 @@ from src.models.models import GraphNet
 os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 
 project_dir = Path(__file__).resolve().parents[2]
-train_path = f"{project_dir}/data/processed/train/"  
+train_path = f"{project_dir}/data/processed/train/"
 definitions = f"{project_dir}/src/data/definitions.yml"
 with open(definitions) as yaml_file:
     defn = yaml.load(yaml_file, Loader=yaml.FullLoader)

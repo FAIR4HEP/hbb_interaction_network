@@ -9,24 +9,24 @@ import numpy as np
 from pathlib import Path
 
 import sys 
-import setGPU  # noqa: F401
+# import setGPU  # noqa: F401
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import tqdm
 import yaml
 
-# sys.path.append("..")
-# from data.h5data import H5Data     # noqa: E402
-# from models import GraphNet  # noqa: E402
+sys.path.append("..")
+from data.h5data import H5Data     # noqa: E402
+from models import GraphNet  # noqa: E402
 
-from src.data.h5data import H5Data
-from src.models.models import GraphNet
+# from src.data.h5data import H5Data
+# from src.models.models import GraphNet
 
 os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 
 project_dir = Path(__file__).resolve().parents[2]
-train_path = f"{project_dir}/data/processed/train/"
+train_path = "//grand/RAPINS/ruike/new_hbb/train/" #f"{project_dir}/data/processed/train/"
 definitions = f"{project_dir}/src/data/definitions.yml"
 with open(definitions) as yaml_file:
     defn = yaml.load(yaml_file, Loader=yaml.FullLoader)
@@ -41,7 +41,7 @@ params_sv = defn["features_3"]
 
 def main(args):  # noqa: C901
     """Main entry point of the app"""
-
+    print(args.random_split)
     model_dict = {}
 
     files = glob.glob(os.path.join(train_path, "newdata_*.h5"))
@@ -321,7 +321,7 @@ def main(args):  # noqa: C901
         if drop_rate > 0.0:
             print("Signal Count: {}, Data Dropped: {}".format(sig_count, data_dropped))
         toc = time.perf_counter()
-        print(f"Training done in {toc - tic:0.4f} seconds")
+#         print(f"Training done in {toc - tic:0.4f} seconds")
         tic = time.perf_counter()
 
         
@@ -380,7 +380,7 @@ def main(args):  # noqa: C901
             correct.append(target)
             del trainingv, trainingv_sv, targetv
         toc = time.perf_counter()
-        print(f"Evaluation done in {toc - tic:0.4f} seconds")
+#         print(f"Evaluation done in {toc - tic:0.4f} seconds")
         l_val = np.mean(np.array(loss_val))
 
         predicted = np.concatenate(lst)
@@ -504,7 +504,7 @@ if __name__ == "__main__":
         help="Load weights from default model if enabled",
     )
     parser.add_argument(
-        "--random-split",
+        "--random_split",
         action="store_true",
         dest="random_split",
         default=False,

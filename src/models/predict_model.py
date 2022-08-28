@@ -2,17 +2,20 @@ import argparse
 import glob
 
 import numpy as np
-import setGPU  # noqa: F401
+# import setGPU  # noqa: F401
 import torch
 import tqdm
 from sklearn.metrics import accuracy_score, roc_auc_score
+from scipy.special import softmax
+import onnx
+import onnxruntime as ort
 
 N = 60  # number of charged particles
 N_sv = 5  # number of SVs
 N_neu = 100
 n_targets = 2  # number of classes
-save_path_test = "dataset/test/"
-save_path_train_val = "dataset/train/"
+save_path_test = "//grand/RAPINS/ruike/new_hbb/test/"#"dataset/test/"
+# save_path_train_val = "dataset/train/"
 
 spectators = [
     "fj_pt",
@@ -123,7 +126,8 @@ params_3 = [
 
 
 def main(args, save_path="", evaluating_test=True):  # noqa: C901
-
+    print("set onnx!!!!!",args.De,args.Do,args.vv_branch, args.set_onnx )
+    
     test_1_arrays = []
     test_2_arrays = []
     test_3_arrays = []
@@ -248,13 +252,15 @@ def main(args, save_path="", evaluating_test=True):  # noqa: C901
 
     # Convert two sets into two branch with one set in both and one set in only one (Use for this file)
     test = test_2
+    test_sv = test_3
     params = params_2
     params_sv = params_3
 
     vv_branch = args.vv_branch
+    set_onnx = args.set_onnx 
 
     prediction = np.array([])
-    batch_size = 1024
+    batch_size = 1000#1024
     torch.cuda.empty_cache()
 
     from models import GraphNet
@@ -270,19 +276,82 @@ def main(args, save_path="", evaluating_test=True):  # noqa: C901
         De=args.De,
         Do=args.Do,
     )
+    print(set_onnx)
+    if set_onnx==False:
+        print("11")
+        gnn.load_state_dict(torch.load("../../models/trained_models/gnn_new_best.pth"))
+        print(sum(p.numel() for p in gnn.parameters() if p.requires_grad))
+#         softmax = torchs.nn.Softmax(dim=1)
 
-    gnn.load_state_dict(torch.load("IN_training/gnn_new_DR0_best.pth"))
-    print(sum(p.numel() for p in gnn.parameters() if p.requires_grad))
-    softmax = torch.nn.Softmax(dim=1)
+        for j in tqdm.tqdm(range(0, target_test.shape[0], batch_size)):
+            dummy_input_1 = torch.from_numpy(test[j : j + batch_size]).cuda()
+            dummy_input_2 = torch.from_numpy(test_sv[j : j + batch_size]).cuda()
+            out_test = gnn(dummy_input_1,dummy_input_2)
+#             print(np.shape(torch.from_numpy(test[j : j + batch_size])))
+#             out_test = softmax(gnn(torch.from_numpy(test[j : j + batch_size]).cuda()))
+            out_test = out_test.cpu().data.numpy()
+#             print(np.shape(out_test))
+            out_test = softmax(out_test, axis=1)
+            if j == 0:
+                prediction = out_test
+            else:
+                prediction = np.concatenate((prediction, out_test), axis=0)
+            del out_test
+            
+#         label_ = []
+#         prediction_ = []
+#         for i in range(len(target_test)):
+#             if [0, 0, ] == target_test[i].tolist():
+#                 continue
+#             else:
+#                 label_.append(target_test[i].tolist())
+#                 prediction_.append(prediction[i])
+#         prediction = np.array(prediction_)
+#         target_test = np.array(label_)
+    
+    else:
+        print("22")
+        model_path = "../../models/trained_models/onnx_model/gnn_%s.onnx" % batch_size
+        onnx_soft_res = []
+        for i in tqdm.tqdm(range(0, target_test.shape[0], batch_size)):
+            dummy_input_1 = test[i : i + batch_size]
+            dummy_input_2 = test_sv[i : i + batch_size]
 
-    for j in tqdm.tqdm(range(0, target_test.shape[0], batch_size)):
-        out_test = softmax(gnn(torch.from_numpy(test[j : j + batch_size]).cuda()))
-        out_test = out_test.cpu().data.numpy()
-        if j == 0:
-            prediction = out_test
-        else:
-            prediction = np.concatenate((prediction, out_test), axis=0)
-        del out_test
+            # Load the ONNX model
+            model = onnx.load(model_path)
+
+            # Check that the IR is well formed
+            onnx.checker.check_model(model)
+
+            # Print a human readable representation of the graph
+            # print(onnx.helper.printable_graph(model.graph))
+
+            options = ort.SessionOptions()
+            options.intra_op_num_threads = 1
+            ort_session = ort.InferenceSession(model_path, options, providers=[("CUDAExecutionProvider")])
+
+            # compute ONNX Runtime output prediction
+            ort_inputs = {ort_session.get_inputs()[0].name: dummy_input_1, ort_session.get_inputs()[1].name: dummy_input_2}
+            ort_outs = ort_session.run(None, ort_inputs)
+
+            temp_onnx_res = ort_outs[0]
+#             softmax = torch.nn.Softmax(dim=1)
+            
+            for x in temp_onnx_res:
+                x_ = softmax(x, axis=0)
+                onnx_soft_res.append(x_.tolist())
+          
+        prediction = np.array(onnx_soft_res)
+#         prediction = []
+#         label_ = []
+#         for i in range(len(target_test)):
+#             if [0, 0, ] == target_test[i].tolist():
+#                 continue
+#             else:
+#                 label_.append(target_test[i].tolist())
+#                 prediction.append(onnx_soft_res[i])
+#         prediction = np.array(prediction)
+#         target_test = np.array(label_)
 
     print(target_test.shape, prediction.shape)
     auc = roc_auc_score(target_test[:, 1], prediction[:, 1])
@@ -315,6 +384,8 @@ if __name__ == "__main__":
     parser.add_argument("--De", type=int, action="store", dest="De", default=5, help="De")
     parser.add_argument("--Do", type=int, action="store", dest="Do", default=6, help="Do")
     parser.add_argument("--hidden", type=int, action="store", dest="hidden", default=15, help="hidden")
-
+    parser.add_argument("--set_onnx", action="store_true", dest="set_onnx",default=False, help="set_onnx")
+    
+    
     args = parser.parse_args()
     main(args, save_path_test, True)

@@ -164,9 +164,9 @@ gnn = GraphNet(
 )
 
 gnn.load_state_dict(
-    torch.load("../../models/trained_models/random_gnn_%s_last.pth" % (label), map_location=torch.device("cuda"))
+    torch.load("../../models/trained_models/gnn_%s_last.pth" % (label), map_location=torch.device("cuda"))
 )
-torch.save(gnn.state_dict(), "../../models/trained_models/random_gnn_%s_last.pth" % (label))
+torch.save(gnn.state_dict(), "../../models/trained_models/gnn_%s_last.pth" % (label))
 
 torch_soft_res = []
 onnx_soft_res = []
@@ -177,10 +177,10 @@ onnx_time = []
 label_ = []
 
 sample_size = 1800000
-batch_sizes = [200, 400, 600, 800, 1000, 1200, 1400, 1500, 1600, 1800, 2000, 2200, 2400, 2600, 3000, 3400, 3800, 4200]
+batch_sizes = [1000]#[200, 400, 600, 800, 1000, 1200, 1400, 1500, 1600, 1800, 2000, 2200, 2400, 2600, 3000, 3400, 3800, 4200]
 
 for batch_size in batch_sizes:
-    model_path = "../../models/trained_models/onnx_model/5_10_gnn_%s.onnx" % batch_size
+    model_path = "../../models/trained_models/onnx_model/gnn_%s.onnx" % batch_size
     # build onnx model
     label_batch = label_all[1 : 1 + batch_size]
     dummy_input_1 = torch.from_numpy(test[1 : 1 + batch_size]).cuda()

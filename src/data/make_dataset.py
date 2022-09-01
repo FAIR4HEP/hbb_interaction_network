@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import logging
+import sys
 import os
 from pathlib import Path
 
@@ -20,8 +21,9 @@ def to_np_array(ak_array, maxN=100, pad=0, dtype=float):
 
 @click.command()
 @click.argument("definitions", type=click.Path(exists=True), default=f"{project_dir}/src/data/definitions.yml")
-@click.option("--train", is_flag=True, show_default=True, default=True)
-def main(definitions, train):
+@click.option("--train", is_flag=True, show_default=True, default=False)
+@click.option("--test", is_flag=True, show_default=True, default=False)
+def main(definitions, train, test):
     """Runs data processing scripts to turn raw data from (../raw) into
     cleaned data ready to be analyzed (saved in ../processed).
     """
@@ -39,12 +41,17 @@ def main(definitions, train):
     batch_size = defn["batch_size"]
     if train:
         dataset = "train"
-    else:
+    elif test:
         dataset = "test"
+    else:
+        logger.info("You need to specify if they are training/testing dataset by setting --train or --test")
     files = defn[f"{dataset}_files"]
 
     counter = -1
     for input_file in files:
+        # The line below should be deleted after testing
+        if counter >= 0:
+            sys.exit()
         in_file = uproot.open(input_file)
         tree = in_file[defn["tree_name"]]
         nentries = tree.num_entries
@@ -74,7 +81,7 @@ def main(definitions, train):
                     feat = to_np_array(arrays[feature], maxN=defn[f"nobj_{j}"])
                     feature_arrays[f"features_{j}"][:, :, i] = feat
                 # For PyTorch channels-first style networks
-                np.swapaxes(feature_arrays[f"features_{j}"], 1, 2)
+                feature_arrays[f"features_{j}"] = np.ascontiguousarray(np.swapaxes(feature_arrays[f"features_{j}"], 1, 2))
 
             arrays = tree.arrays(labels, library="np", entry_start=k, entry_stop=k + batch_size)
             target_array = np.zeros((real_batch_size, 2), dtype=float)

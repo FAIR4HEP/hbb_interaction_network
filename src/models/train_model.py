@@ -36,7 +36,6 @@ n_targets = len(defn["reduced_labels"])  # number of classes
 params = defn["features_2"]
 params_sv = defn["features_3"]
 
-
 def main(args):  # noqa: C901
     """Main entry point of the app"""
     print(args.random_split)

@@ -49,9 +49,6 @@ def main(definitions, train, test):
 
     counter = -1
     for input_file in files:
-        # The line below should be deleted after testing
-        if counter >= 0:
-            sys.exit()
         in_file = uproot.open(input_file)
         tree = in_file[defn["tree_name"]]
         nentries = tree.num_entries

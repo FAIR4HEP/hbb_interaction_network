@@ -40,7 +40,7 @@ def main(args):  # noqa: C901
     """Main entry point of the app"""
     print(args.random_split)
     model_dict = {}
-    
+
     device = args.device
     if device != "cpu":
         import setGPU  # noqa: F401

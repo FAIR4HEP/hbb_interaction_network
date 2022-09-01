@@ -267,7 +267,9 @@ if __name__ == "__main__":
     parser.add_argument("--De", type=int, action="store", dest="De", default=5, help="De")
     parser.add_argument("--Do", type=int, action="store", dest="Do", default=6, help="Do")
     parser.add_argument("--hidden", type=int, action="store", dest="hidden", default=15, help="hidden")
-    parser.add_argument("--device", action="store", dest="device", default="cpu", help="device to train gnn; follow pytorch convention")
+    parser.add_argument(
+        "--device", action="store", dest="device", default="cpu", help="device to train gnn; follow pytorch convention"
+    )
     parser.add_argument("--set_onnx", action="store_true", dest="set_onnx", default=False, help="set_onnx")
 
     args = parser.parse_args()

@@ -511,11 +511,7 @@ if __name__ == "__main__":
         help="randomly split train test data if enabled",
     )
     parser.add_argument(
-        "--device",
-        action="store",
-        dest="device",
-        default="cpu",
-        help="device to train gnn; follow pytorch convention"
+        "--device", action="store", dest="device", default="cpu", help="device to train gnn; follow pytorch convention"
     )
 
     args = parser.parse_args()

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import logging
-import sys
 import os
+import sys
 from pathlib import Path
 
 import awkward as ak

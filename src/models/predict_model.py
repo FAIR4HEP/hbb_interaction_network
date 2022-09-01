@@ -25,7 +25,7 @@ params_2 = defn["features_2"]
 params_3 = defn["features_3"]
 
 
-def main(args, save_path="", evaluating_test=True):  # noqa: C901    
+def main(args, save_path="", evaluating_test=True):  # noqa: C901
     device = args.device
     if device != "cpu":
         import setGPU  # noqa: F401

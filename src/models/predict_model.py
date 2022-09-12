@@ -181,16 +181,13 @@ def main(args, save_path="", evaluating_test=True):  # noqa: C901
         print("11")
         gnn.load_state_dict(torch.load("../../models/trained_models/gnn_new_best.pth"))
         print(sum(p.numel() for p in gnn.parameters() if p.requires_grad))
-        #         softmax = torchs.nn.Softmax(dim=1)
 
         for j in tqdm.tqdm(range(0, target_test.shape[0], batch_size)):
             dummy_input_1 = torch.from_numpy(test[j : j + batch_size]).cuda()
             dummy_input_2 = torch.from_numpy(test_sv[j : j + batch_size]).cuda()
-            out_test = gnn(dummy_input_1, dummy_input_2)
-            #             print(np.shape(torch.from_numpy(test[j : j + batch_size])))
-            #             out_test = softmax(gnn(torch.from_numpy(test[j : j + batch_size]).cuda()))
+            
+            out_test = gnn(dummy_input_1, dummy_input_2) 
             out_test = out_test.cpu().data.numpy()
-            #             print(np.shape(out_test))
             out_test = softmax(out_test, axis=1)
             if j == 0:
                 prediction = out_test
@@ -199,7 +196,6 @@ def main(args, save_path="", evaluating_test=True):  # noqa: C901
             del out_test
 
     else:
-        print("22")
         model_path = "../../models/trained_models/onnx_model/gnn_%s.onnx" % batch_size
         onnx_soft_res = []
         for i in tqdm.tqdm(range(0, target_test.shape[0], batch_size)):
@@ -224,7 +220,6 @@ def main(args, save_path="", evaluating_test=True):  # noqa: C901
             ort_outs = ort_session.run(None, ort_inputs)
 
             temp_onnx_res = ort_outs[0]
-            #             softmax = torch.nn.Softmax(dim=1)
 
             for x in temp_onnx_res:
                 x_ = softmax(x, axis=0)

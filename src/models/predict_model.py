@@ -184,8 +184,8 @@ def main(args, save_path="", evaluating_test=True):  # noqa: C901
         for j in tqdm.tqdm(range(0, target_test.shape[0], batch_size)):
             dummy_input_1 = torch.from_numpy(test[j : j + batch_size]).cuda()
             dummy_input_2 = torch.from_numpy(test_sv[j : j + batch_size]).cuda()
-            
-            out_test = gnn(dummy_input_1, dummy_input_2) 
+
+            out_test = gnn(dummy_input_1, dummy_input_2)
             out_test = out_test.cpu().data.numpy()
             out_test = softmax(out_test, axis=1)
             if j == 0:
@@ -260,4 +260,4 @@ if __name__ == "__main__":
     parser.add_argument("--set_onnx", action="store_true", dest="set_onnx", default=False, help="set_onnx")
 
     args = parser.parse_args()
-    main(args, save_path_test, True)
+    main(args, save_path, True)

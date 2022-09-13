@@ -1,10 +1,9 @@
 import argparse
 import glob
-from pathlib import Path
 import os
 import sys
+from pathlib import Path
 
-import setGPU
 import numpy as np
 import sklearn.model_selection
 import torch
@@ -31,7 +30,6 @@ params = defn["features_2"]
 params_sv = defn["features_3"]
 
 
-
 """
 #Deep double-b features
 params_2 = params_2[22:]
@@ -42,11 +40,11 @@ params_3 = params_2[11:13]
 def main(args):
     """Main entry point of the app"""
     # Convert two sets into two branch with one set in both and one set in only one (Use for this file)
-    
+
     outdir = args.outdir
     files = glob.glob(train_path + "/newdata_*.h5")
     files_train = files  # take rest for training
-    # label = "new"
+    batch_size = 5229076  # number of all data samples
 
     data_train = H5Data(
         batch_size=batch_size,
@@ -188,6 +186,6 @@ if __name__ == "__main__":
         default="./npy_data2",
         help="Output directory",
     )
-    
+
     args = parser.parse_args()
     main(args)

@@ -27,7 +27,6 @@ params_3 = defn["features_3"]
 
 print(ort.get_device())
 
-
 test_2_arrays = []
 test_3_arrays = []
 target_test_arrays = []

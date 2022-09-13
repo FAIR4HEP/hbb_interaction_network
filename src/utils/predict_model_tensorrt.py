@@ -33,7 +33,6 @@ test_2 = np.swapaxes(test_2, 1, 2)
 test_3 = np.swapaxes(test_3, 1, 2)
 print(test_2.shape)
 
-
 #####
 # Make device context
 #####
@@ -47,7 +46,7 @@ device_ctx = device.make_context()
 #####
 def run_inference(test, test_sv, batch_size, i):
     # Load image to memory buffer
-    start_time = time.perf_counter() 
+    start_time = time.perf_counter()
     preprocessed = test.ravel()
     preprocessed_sv = test_sv.ravel()
 
@@ -71,7 +70,7 @@ def run_inference(test, test_sv, batch_size, i):
 
         # Synchronize the stream
         stream.synchronize()
-        stop_time = time.perf_counter() 
+        stop_time = time.perf_counter()
         time_ = stop_time - start_time
         out_ = h_output
 

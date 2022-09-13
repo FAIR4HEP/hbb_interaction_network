@@ -1,5 +1,6 @@
 import glob
 import time
+from pathlib import Path
 
 import numpy as np
 import pycuda.driver as cuda
@@ -12,14 +13,14 @@ from sklearn.metrics import accuracy_score
 
 sample_size = 1800000
 batch_sizes = [200, 400, 600, 800, 1000, 1200, 1400, 1500, 1600, 1800, 2000, 2200, 2400, 2600, 3000, 3400, 3800, 4200]
-save_path = "//grand/RAPINS/ruike/new_hbb/test/"  # './test_hbb/'#
+project_dir = Path(__file__).resolve().parents[2]
+save_path = f"{project_dir}/data/processed/test/"
 
 test_2_arrays = []
 test_3_arrays = []
 target_test_arrays = []
 
 for test_file in sorted(glob.glob(save_path + "test_*_features_2.npy")):
-    print("!!", test_file)
     test_2_arrays.append(np.load(test_file))
 test_2 = np.concatenate(test_2_arrays)
 for test_file in sorted(glob.glob(save_path + "test_*_features_3.npy")):
@@ -46,7 +47,7 @@ device_ctx = device.make_context()
 #####
 def run_inference(test, test_sv, batch_size, i):
     # Load image to memory buffer
-    start_time = time.perf_counter()  # time.process_time() #
+    start_time = time.perf_counter() 
     preprocessed = test.ravel()
     preprocessed_sv = test_sv.ravel()
 
@@ -58,8 +59,6 @@ def run_inference(test, test_sv, batch_size, i):
         cuda.memcpy_htod_async(d_input_2, h_input_2, stream)
 
         # Run inference
-        # exec_ctx.profiler = trt.Profiler()
-        # start_time = time.process_time()
         exec_ctx.execute_async(
             batch_size, bindings=[int(d_input_1), int(d_input_2), int(d_output)], stream_handle=stream.handle
         )
@@ -72,7 +71,7 @@ def run_inference(test, test_sv, batch_size, i):
 
         # Synchronize the stream
         stream.synchronize()
-        stop_time = time.perf_counter()  # time.process_time() #
+        stop_time = time.perf_counter() 
         time_ = stop_time - start_time
         out_ = h_output
 
@@ -139,7 +138,6 @@ for batch_size in batch_sizes:
                 label_.append(x.tolist())
             for x in result:
                 result_arr.append(x.tolist())
-        print(len(result_arr), batch_size)
 
         ##############################
         # calculate auc, throughput

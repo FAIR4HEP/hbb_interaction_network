@@ -1,69 +1,31 @@
 import glob
 import sys
+from pathlib import Path
 
 import numpy as np
 import onnxruntime as ort
 import torch
+import yaml
 
 sys.path.append("..")
 from models.models import GraphNet  # noqa: E402
 
 sv_branch = 1
-N = 60  # number of charged particles
-N_sv = 5  # number of SVs
-n_targets = 2  # number of classes
-save_path = "//grand/RAPINS/ruike/new_hbb/test/"
+
+project_dir = Path(__file__).resolve().parents[2]
+save_path = f"{project_dir}/data/processed/test/"
+definitions = f"{project_dir}/src/data/definitions.yml"
+with open(definitions) as yaml_file:
+    defn = yaml.load(yaml_file, Loader=yaml.FullLoader)
+
+N = defn["nobj_2"]  # number of charged particles
+N_sv = defn["nobj_3"]  # number of SVs
+n_targets = len(defn["reduced_labels"])  # number of classes
+spectators = defn["spectators"]
+params_2 = defn["features_2"]
+params_3 = defn["features_3"]
 
 print(ort.get_device())
-
-params_2 = [
-    "track_ptrel",
-    "track_erel",
-    "track_phirel",
-    "track_etarel",
-    "track_deltaR",
-    "track_drminsv",
-    "track_drsubjet1",
-    "track_drsubjet2",
-    "track_dz",
-    "track_dzsig",
-    "track_dxy",
-    "track_dxysig",
-    "track_normchi2",
-    "track_quality",
-    "track_dptdpt",
-    "track_detadeta",
-    "track_dphidphi",
-    "track_dxydxy",
-    "track_dzdz",
-    "track_dxydz",
-    "track_dphidxy",
-    "track_dlambdadz",
-    "trackBTag_EtaRel",
-    "trackBTag_PtRatio",
-    "trackBTag_PParRatio",
-    "trackBTag_Sip2dVal",
-    "trackBTag_Sip2dSig",
-    "trackBTag_Sip3dVal",
-    "trackBTag_Sip3dSig",
-    "trackBTag_JetDistVal",
-]
-params_3 = [
-    "sv_ptrel",
-    "sv_erel",
-    "sv_phirel",
-    "sv_etarel",
-    "sv_deltaR",
-    "sv_pt",
-    "sv_mass",
-    "sv_ntracks",
-    "sv_normchi2",
-    "sv_dxy",
-    "sv_dxysig",
-    "sv_d3d",
-    "sv_d3dsig",
-    "sv_costhetasvpv",
-]
 
 
 test_2_arrays = []
@@ -86,67 +48,10 @@ label_all = np.concatenate(target_test_arrays)
 
 print(len(label_all))
 
-test_2 = np.swapaxes(test_2, 1, 2)
-test_3 = np.swapaxes(test_3, 1, 2)
+test = np.swapaxes(test_2, 1, 2)
+test_sv = np.swapaxes(test_3, 1, 2)
 test_spec = np.swapaxes(test_spec, 1, 2)
-
-fj_pt = test_spec[:, 0, 0]
-fj_eta = test_spec[:, 1, 0]
-fj_sdmass = test_spec[:, 2, 0]
-print("before", test_2.shape)
-print("before", test_3.shape)
-
-no_undef = fj_pt > -999  # no cut
-min_pt = -999  # 300
-max_pt = 99999  # 2000
-min_eta = -999  # no cut
-max_eta = 999  # no cut
-min_msd = -999  # 40
-max_msd = 9999  # 200
-
-test_2 = test_2[
-    (fj_sdmass > min_msd)
-    & (fj_sdmass < max_msd)
-    & (fj_eta > min_eta)
-    & (fj_eta < max_eta)
-    & (fj_pt > min_pt)
-    & (fj_pt < max_pt)
-    & no_undef
-]
-test_3 = test_3[
-    (fj_sdmass > min_msd)
-    & (fj_sdmass < max_msd)
-    & (fj_eta > min_eta)
-    & (fj_eta < max_eta)
-    & (fj_pt > min_pt)
-    & (fj_pt < max_pt)
-    & no_undef
-]
-test_spec = test_spec[
-    (fj_sdmass > min_msd)
-    & (fj_sdmass < max_msd)
-    & (fj_eta > min_eta)
-    & (fj_eta < max_eta)
-    & (fj_pt > min_pt)
-    & (fj_pt < max_pt)
-    & no_undef
-]
-label_all = label_all[
-    (fj_sdmass > min_msd)
-    & (fj_sdmass < max_msd)
-    & (fj_eta > min_eta)
-    & (fj_eta < max_eta)
-    & (fj_pt > min_pt)
-    & (fj_pt < max_pt)
-    & no_undef
-]
-
-print("after", test_2.shape)
-print("after", test_3.shape)
-
-test = test_2
 params = params_2
-test_sv = test_3
 params_sv = params_3
 label = "new"
 

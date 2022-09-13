@@ -13,7 +13,7 @@ from scipy.special import softmax
 from sklearn.metrics import accuracy_score, roc_auc_score
 
 project_dir = Path(__file__).resolve().parents[2]
-save_path_test = f"{project_dir}/data/processed/test/"
+save_path = f"{project_dir}/data/processed/test/"
 definitions = f"{project_dir}/src/data/definitions.yml"
 with open(definitions) as yaml_file:
     defn = yaml.load(yaml_file, Loader=yaml.FullLoader)
@@ -178,7 +178,6 @@ def main(args, save_path="", evaluating_test=True):  # noqa: C901
     )
 
     if set_onnx is False:
-        print("11")
         gnn.load_state_dict(torch.load("../../models/trained_models/gnn_new_best.pth"))
         print(sum(p.numel() for p in gnn.parameters() if p.requires_grad))
 

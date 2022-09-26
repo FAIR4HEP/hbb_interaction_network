@@ -17,9 +17,15 @@ import yaml
 from src.data.h5data import H5Data
 from src.models.models import GraphNet
 
+# import sys
+# sys.path.append("..")
+# from data.h5data import H5Data     # noqa: E402
+# from models import GraphNet  # noqa: E402
+
 os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 
 project_dir = Path(__file__).resolve().parents[2]
+
 train_path = f"{project_dir}/data/processed/train/"
 definitions = f"{project_dir}/src/data/definitions.yml"
 with open(definitions) as yaml_file:
@@ -35,7 +41,7 @@ params_sv = defn["features_3"]
 
 def main(args):  # noqa: C901
     """Main entry point of the app"""
-
+    print(args.random_split)
     model_dict = {}
 
     files = glob.glob(os.path.join(train_path, "newdata_*.h5"))
@@ -46,6 +52,8 @@ def main(args):  # noqa: C901
     vv_branch = args.vv_branch
     drop_rate = args.drop_rate
     load_def = args.load_def
+    random_split = args.random_split
+    indir = args.indir
 
     if args.drop_pfeatures != "":
         drop_pfeatures = list(map(int, str(args.drop_pfeatures).split(",")))
@@ -81,29 +89,60 @@ def main(args):  # noqa: C901
     f_model.close()
 
     # Get the training and validation data
-    data_train = H5Data(
-        batch_size=batch_size,
-        cache=None,
-        preloading=0,
-        features_name="training_subgroup",
-        labels_name="target_subgroup",
-        spectators_name="spectator_subgroup",
-    )
-    data_train.set_file_names(files_train)
-    data_val = H5Data(
-        batch_size=batch_size,
-        cache=None,
-        preloading=0,
-        features_name="training_subgroup",
-        labels_name="target_subgroup",
-        spectators_name="spectator_subgroup",
-    )
-    data_val.set_file_names(files_val)
+    if random_split is False:
+        data_train = H5Data(
+            batch_size=batch_size,
+            cache=None,
+            preloading=0,
+            features_name="training_subgroup",
+            labels_name="target_subgroup",
+            spectators_name="spectator_subgroup",
+        )
+        data_train.set_file_names(files_train)
+        data_val = H5Data(
+            batch_size=batch_size,
+            cache=None,
+            preloading=0,
+            features_name="training_subgroup",
+            labels_name="target_subgroup",
+            spectators_name="spectator_subgroup",
+        )
+        data_val.set_file_names(files_val)
 
-    n_val = data_val.count_data()
-    n_train = data_train.count_data()
-    print("val data:", n_val)
-    print("train data:", n_train)
+        n_val = data_val.count_data()
+        n_train = data_train.count_data()
+        print("val data:", n_val)
+        print("train data:", n_train)
+    else:
+        t_X1_tr = np.load("{}/data_X1_tr.npy".format(indir))
+        t_X2_tr = np.load("{}/data_X2_tr.npy".format(indir))
+        t_X3_tr = np.load("{}/data_X3_tr.npy".format(indir))
+
+        t_X4_tr = np.load("{}/data_X4_tr.npy".format(indir))
+        t_Y_tr = np.load("{}/data_Y_tr.npy".format(indir))
+        t_Z_tr = np.load("{}/data_Z_tr.npy".format(indir))
+
+        t_X1_te = np.load("{}/data_X1_te.npy".format(indir))
+        t_X2_te = np.load("{}/data_X2_te.npy".format(indir))
+        t_X3_te = np.load("{}/data_X3_te.npy".format(indir))
+
+        t_X4_te = np.load("{}/data_X4_te.npy".format(indir))
+        t_Y_te = np.load("{}/data_Y_te.npy".format(indir))
+        t_Z_te = np.load("{}/data_Z_te.npy".format(indir))
+
+        # print("seperate converting finished")
+        t_X_tr = [t_X1_tr, t_X2_tr, t_X3_tr, t_X4_tr]
+        t_Y_tr = [t_Y_tr]
+        t_Z_tr = [t_Z_tr]
+        print("mid for train finish numpy convert")
+        t_X_te = [t_X1_te, t_X2_te, t_X3_te, t_X4_te]
+        t_Y_te = [t_Y_te]
+        t_Z_te = [t_Z_te]
+
+        del t_X1_tr, t_X2_tr, t_X3_tr, t_X4_tr
+        del t_X1_te, t_X2_te, t_X3_te, t_X4_te
+
+        print("!!!", len(t_X_te), len(t_Y_te), len(t_Z_te))
 
     gnn = GraphNet(
         n_constituents=N,
@@ -215,13 +254,44 @@ def main(args):  # noqa: C901
         tic = time.perf_counter()
         sig_count = 0
         data_dropped = 0
-        for sub_X, sub_Y, _ in tqdm.tqdm(data_train.generate_data(), total=int(n_train / batch_size)):
-            training = sub_X[2]
-            training_sv = sub_X[3]
-            target = sub_Y[0]
-            trainingv = (torch.FloatTensor(training)).cuda()
-            trainingv_sv = (torch.FloatTensor(training_sv)).cuda()
-            targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).cuda()
+
+        # train process
+        if random_split is False:
+            iterator = data_train.generate_data()
+            total_ = int(n_train / batch_size)
+        else:
+            batch_num_tr = int(len(t_X_tr[1]) / batch_size)
+            print("batch num, X_tr_1, batch_size: ", batch_num_tr, len(t_X_tr[1]), batch_size)
+            iterator = range(batch_num_tr)
+            total_ = batch_num_tr
+
+        for element in tqdm.tqdm(iterator, total=total_):
+            if random_split is False:
+                (sub_X, sub_Y, _) = element
+                training = sub_X[2]
+                training_sv = sub_X[3]
+                target = sub_Y[0]
+                trainingv = (torch.FloatTensor(training)).cuda()
+                trainingv_sv = (torch.FloatTensor(training_sv)).cuda()
+                targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).cuda()
+            else:
+                idx_ = element
+                if idx_ == batch_num_tr - 1:
+                    training = t_X_tr[2][idx_ * batch_size : -1]
+                    training_sv = t_X_tr[3][idx_ * batch_size : -1]
+                    target = t_Y_tr[0][idx_ * batch_size : -1]
+                    trainingv = (torch.FloatTensor(training)).cuda()
+                    trainingv_sv = (torch.FloatTensor(training_sv)).cuda()
+                    targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).cuda()
+
+                else:
+                    training = t_X_tr[2][idx_ * batch_size : (idx_ + 1) * batch_size]
+                    training_sv = t_X_tr[3][idx_ * batch_size : (idx_ + 1) * batch_size]
+                    target = t_Y_tr[0][idx_ * batch_size : (idx_ + 1) * batch_size]
+                    trainingv = (torch.FloatTensor(training)).cuda()
+                    trainingv_sv = (torch.FloatTensor(training_sv)).cuda()
+                    targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).cuda()
+
             if drop_rate > 0:
                 keep_indices = targetv == 0
                 sig_count += batch_size - torch.sum(keep_indices).item()
@@ -254,13 +324,42 @@ def main(args):  # noqa: C901
         print(f"Training done in {toc - tic:0.4f} seconds")
         tic = time.perf_counter()
 
-        for sub_X, sub_Y, _ in tqdm.tqdm(data_val.generate_data(), total=n_val / batch_size):
-            training = sub_X[2]
-            training_sv = sub_X[3]
-            target = sub_Y[0]
-            trainingv = (torch.FloatTensor(training)).cuda()
-            trainingv_sv = (torch.FloatTensor(training_sv)).cuda()
-            targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).cuda()
+        # validate process
+        if random_split is False:
+            iterator = data_val.generate_data()
+            total_ = int(n_val / batch_size)
+        else:
+            batch_num_te = int(len(t_X_te[1]) / batch_size)
+            print("batch num, X_te_1, batch_size: ", batch_num_te, len(t_X_te[1]), batch_size)
+            iterator = range(batch_num_te)
+            total_ = batch_num_te
+
+        for element in tqdm.tqdm(iterator, total=total_):
+            if random_split is False:
+                (sub_X, sub_Y, _) = element
+                training = sub_X[2]
+                training_sv = sub_X[3]
+                target = sub_Y[0]
+                trainingv = (torch.FloatTensor(training)).cuda()
+                trainingv_sv = (torch.FloatTensor(training_sv)).cuda()
+                targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).cuda()
+            else:
+                idx_ = element
+                if idx_ == batch_num_tr - 1:
+                    training = t_X_tr[2][idx_ * batch_size : -1]
+                    training_sv = t_X_tr[3][idx_ * batch_size : -1]
+                    target = t_Y_tr[0][idx_ * batch_size : -1]
+                    trainingv = (torch.FloatTensor(training)).cuda()
+                    trainingv_sv = (torch.FloatTensor(training_sv)).cuda()
+                    targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).cuda()
+
+                else:
+                    training = t_X_tr[2][idx_ * batch_size : (idx_ + 1) * batch_size]
+                    training_sv = t_X_tr[3][idx_ * batch_size : (idx_ + 1) * batch_size]
+                    target = t_Y_tr[0][idx_ * batch_size : (idx_ + 1) * batch_size]
+                    trainingv = (torch.FloatTensor(training)).cuda()
+                    trainingv_sv = (torch.FloatTensor(training_sv)).cuda()
+                    targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).cuda()
 
             if len(drop_pfeatures) > 0:
                 keep_features = [i for i in np.arange(0, len(params), 1, dtype=int) if i not in drop_pfeatures]
@@ -343,6 +442,14 @@ if __name__ == "__main__":
         help="Output directory",
     )
     parser.add_argument(
+        "--npy_indir",
+        type=str,
+        action="store",
+        dest="indir",
+        default="./npy_data2",
+        help="Output directory",
+    )
+    parser.add_argument(
         "--vv_branch",
         action="store_true",
         dest="vv_branch",
@@ -400,6 +507,13 @@ if __name__ == "__main__":
         dest="load_def",
         default=False,
         help="Load weights from default model if enabled",
+    )
+    parser.add_argument(
+        "--random_split",
+        action="store_true",
+        dest="random_split",
+        default=False,
+        help="randomly split train test data if enabled",
     )
 
     args = parser.parse_args()

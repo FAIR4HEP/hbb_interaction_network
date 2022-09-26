@@ -3,14 +3,17 @@ import glob
 from pathlib import Path
 
 import numpy as np
+import onnx
+import onnxruntime as ort
 import setGPU  # noqa: F401
 import torch
 import tqdm
 import yaml
+from scipy.special import softmax
 from sklearn.metrics import accuracy_score, roc_auc_score
 
 project_dir = Path(__file__).resolve().parents[2]
-save_path_test = f"{project_dir}/data/processed/test/"
+save_path = f"{project_dir}/data/processed/test/"
 definitions = f"{project_dir}/src/data/definitions.yml"
 with open(definitions) as yaml_file:
     defn = yaml.load(yaml_file, Loader=yaml.FullLoader)
@@ -149,13 +152,15 @@ def main(args, save_path="", evaluating_test=True):  # noqa: C901
 
     # Convert two sets into two branch with one set in both and one set in only one (Use for this file)
     test = test_2
+    test_sv = test_3
     params = params_2
     params_sv = params_3
 
     vv_branch = args.vv_branch
+    set_onnx = args.set_onnx
 
     prediction = np.array([])
-    batch_size = 1024
+    batch_size = 1000  # 1024
     torch.cuda.empty_cache()
 
     from models import GraphNet
@@ -172,18 +177,54 @@ def main(args, save_path="", evaluating_test=True):  # noqa: C901
         Do=args.Do,
     )
 
-    gnn.load_state_dict(torch.load("IN_training/gnn_new_DR0_best.pth"))
-    print(sum(p.numel() for p in gnn.parameters() if p.requires_grad))
-    softmax = torch.nn.Softmax(dim=1)
+    if set_onnx is False:
+        gnn.load_state_dict(torch.load("../../models/trained_models/gnn_new_best.pth"))
+        print(sum(p.numel() for p in gnn.parameters() if p.requires_grad))
 
-    for j in tqdm.tqdm(range(0, target_test.shape[0], batch_size)):
-        out_test = softmax(gnn(torch.from_numpy(test[j : j + batch_size]).cuda()))
-        out_test = out_test.cpu().data.numpy()
-        if j == 0:
-            prediction = out_test
-        else:
-            prediction = np.concatenate((prediction, out_test), axis=0)
-        del out_test
+        for j in tqdm.tqdm(range(0, target_test.shape[0], batch_size)):
+            dummy_input_1 = torch.from_numpy(test[j : j + batch_size]).cuda()
+            dummy_input_2 = torch.from_numpy(test_sv[j : j + batch_size]).cuda()
+
+            out_test = gnn(dummy_input_1, dummy_input_2)
+            out_test = out_test.cpu().data.numpy()
+            out_test = softmax(out_test, axis=1)
+            if j == 0:
+                prediction = out_test
+            else:
+                prediction = np.concatenate((prediction, out_test), axis=0)
+            del out_test
+
+    else:
+        model_path = "../../models/trained_models/onnx_model/gnn_%s.onnx" % batch_size
+        onnx_soft_res = []
+        for i in tqdm.tqdm(range(0, target_test.shape[0], batch_size)):
+            dummy_input_1 = test[i : i + batch_size]
+            dummy_input_2 = test_sv[i : i + batch_size]
+
+            # Load the ONNX model
+            model = onnx.load(model_path)
+
+            # Check that the IR is well formed
+            onnx.checker.check_model(model)
+
+            # Print a human readable representation of the graph
+            # print(onnx.helper.printable_graph(model.graph))
+
+            options = ort.SessionOptions()
+            options.intra_op_num_threads = 1
+            ort_session = ort.InferenceSession(model_path, options, providers=[("CUDAExecutionProvider")])
+
+            # compute ONNX Runtime output prediction
+            ort_inputs = {ort_session.get_inputs()[0].name: dummy_input_1, ort_session.get_inputs()[1].name: dummy_input_2}
+            ort_outs = ort_session.run(None, ort_inputs)
+
+            temp_onnx_res = ort_outs[0]
+
+            for x in temp_onnx_res:
+                x_ = softmax(x, axis=0)
+                onnx_soft_res.append(x_.tolist())
+
+        prediction = np.array(onnx_soft_res)
 
     print(target_test.shape, prediction.shape)
     auc = roc_auc_score(target_test[:, 1], prediction[:, 1])
@@ -216,6 +257,7 @@ if __name__ == "__main__":
     parser.add_argument("--De", type=int, action="store", dest="De", default=5, help="De")
     parser.add_argument("--Do", type=int, action="store", dest="Do", default=6, help="Do")
     parser.add_argument("--hidden", type=int, action="store", dest="hidden", default=15, help="hidden")
+    parser.add_argument("--set_onnx", action="store_true", dest="set_onnx", default=False, help="set_onnx")
 
     args = parser.parse_args()
-    main(args, save_path_test, True)
+    main(args, save_path, True)

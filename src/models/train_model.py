@@ -280,7 +280,6 @@ def main(args):  # noqa: C901
                 trainingv = (torch.FloatTensor(training)).to(device)
                 trainingv_sv = (torch.FloatTensor(training_sv)).to(device)
                 targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).to(device)
-                
             else:
                 idx_ = element
                 if idx_ == batch_num_tr - 1:
@@ -531,7 +530,6 @@ if __name__ == "__main__":
     parser.add_argument(
         "--device", action="store", dest="device", default="cpu", help="device to train gnn; follow pytorch convention"
     )
-
 
     args = parser.parse_args()
     main(args)

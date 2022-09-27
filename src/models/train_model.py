@@ -10,6 +10,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+if torch.cuda.is_available():
+    import setGPU
 import tqdm
 import yaml
 
@@ -43,8 +45,6 @@ def main(args):  # noqa: C901
     model_dict = {}
 
     device = args.device
-    if device != "cpu":
-        import setGPU  # noqa: F401
 
     files = glob.glob(os.path.join(train_path, "newdata_*.h5"))
     files_val = files[:5]  # take first 5 for validation
@@ -55,6 +55,7 @@ def main(args):  # noqa: C901
     drop_rate = args.drop_rate
     load_def = args.load_def
     random_split = args.random_split
+    indir = args.indir
 
     if args.drop_pfeatures != "":
         drop_pfeatures = list(map(int, str(args.drop_pfeatures).split(",")))
@@ -115,21 +116,21 @@ def main(args):  # noqa: C901
         print("val data:", n_val)
         print("train data:", n_train)
     else:
-        t_X1_tr = np.load("//grand/RAPINS/ruike/npy_data1/data_X1_tr.npy")
-        t_X2_tr = np.load("//grand/RAPINS/ruike/npy_data1/data_X2_tr.npy")
-        t_X3_tr = np.load("//grand/RAPINS/ruike/npy_data1/data_X3_tr.npy")
+        t_X1_tr = np.load("{}/data_X1_tr.npy".format(indir))
+        t_X2_tr = np.load("{}/data_X2_tr.npy".format(indir))
+        t_X3_tr = np.load("{}/data_X3_tr.npy".format(indir))
 
-        t_X4_tr = np.load("//grand/RAPINS/ruike/npy_data1/data_X4_tr.npy")
-        t_Y_tr = np.load("//grand/RAPINS/ruike/npy_data1/data_Y_tr.npy")
-        t_Z_tr = np.load("//grand/RAPINS/ruike/npy_data1/data_Z_tr.npy")
+        t_X4_tr = np.load("{}/data_X4_tr.npy".format(indir))
+        t_Y_tr = np.load("{}/data_Y_tr.npy".format(indir))
+        t_Z_tr = np.load("{}/data_Z_tr.npy".format(indir))
 
-        t_X1_te = np.load("//grand/RAPINS/ruike/npy_data1/data_X1_te.npy")
-        t_X2_te = np.load("//grand/RAPINS/ruike/npy_data1/data_X2_te.npy")
-        t_X3_te = np.load("//grand/RAPINS/ruike/npy_data1/data_X3_te.npy")
+        t_X1_te = np.load("{}/data_X1_te.npy".format(indir))
+        t_X2_te = np.load("{}/data_X2_te.npy".format(indir))
+        t_X3_te = np.load("{}/data_X3_te.npy".format(indir))
 
-        t_X4_te = np.load("//grand/RAPINS/ruike/npy_data1/data_X4_te.npy")
-        t_Y_te = np.load("//grand/RAPINS/ruike/npy_data1/data_Y_te.npy")
-        t_Z_te = np.load("//grand/RAPINS/ruike/npy_data1/data_Z_te.npy")
+        t_X4_te = np.load("{}/data_X4_te.npy".format(indir))
+        t_Y_te = np.load("{}/data_Y_te.npy".format(indir))
+        t_Z_te = np.load("{}/data_Z_te.npy".format(indir))
 
         # print("seperate converting finished")
         t_X_tr = [t_X1_tr, t_X2_tr, t_X3_tr, t_X4_tr]
@@ -442,6 +443,14 @@ if __name__ == "__main__":
         action="store",
         dest="outdir",
         default="../../models/",
+        help="Output directory",
+    )
+    parser.add_argument(
+        "--npy_indir",
+        type=str,
+        action="store",
+        dest="indir",
+        default="./npy_data2",
         help="Output directory",
     )
     parser.add_argument(

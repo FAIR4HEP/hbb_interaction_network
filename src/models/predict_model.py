@@ -6,13 +6,15 @@ import numpy as np
 import onnx
 import onnxruntime as ort
 import torch
+if torch.cuda.is_available():
+    import setGPU
 import tqdm
 import yaml
 from scipy.special import softmax
 from sklearn.metrics import accuracy_score, roc_auc_score
 
 project_dir = Path(__file__).resolve().parents[2]
-save_path_test = f"{project_dir}/data/processed/test/"
+save_path = f"{project_dir}/data/processed/test/"
 definitions = f"{project_dir}/src/data/definitions.yml"
 with open(definitions) as yaml_file:
     defn = yaml.load(yaml_file, Loader=yaml.FullLoader)
@@ -26,9 +28,6 @@ params_3 = defn["features_3"]
 
 
 def main(args, save_path="", evaluating_test=True):  # noqa: C901
-    device = args.device
-    if device != "cpu":
-        import setGPU  # noqa: F401
 
     test_1_arrays = []
     test_2_arrays = []
@@ -177,23 +176,19 @@ def main(args, save_path="", evaluating_test=True):  # noqa: C901
         vv_branch=int(vv_branch),
         De=args.De,
         Do=args.Do,
-        device=device,
+        device=args.device,
     )
 
     if set_onnx is False:
-        print("11")
         gnn.load_state_dict(torch.load("../../models/trained_models/gnn_new_best.pth"))
         print(sum(p.numel() for p in gnn.parameters() if p.requires_grad))
-        #         softmax = torchs.nn.Softmax(dim=1)
 
         for j in tqdm.tqdm(range(0, target_test.shape[0], batch_size)):
             dummy_input_1 = torch.from_numpy(test[j : j + batch_size]).to(device)
             dummy_input_2 = torch.from_numpy(test_sv[j : j + batch_size]).to(device)
+
             out_test = gnn(dummy_input_1, dummy_input_2)
-            #             print(np.shape(torch.from_numpy(test[j : j + batch_size])))
-            #             out_test = softmax(gnn(torch.from_numpy(test[j : j + batch_size]).to(device)))
             out_test = out_test.cpu().data.numpy()
-            #             print(np.shape(out_test))
             out_test = softmax(out_test, axis=1)
             if j == 0:
                 prediction = out_test
@@ -202,7 +197,6 @@ def main(args, save_path="", evaluating_test=True):  # noqa: C901
             del out_test
 
     else:
-        print("22")
         model_path = "../../models/trained_models/onnx_model/gnn_%s.onnx" % batch_size
         onnx_soft_res = []
         for i in tqdm.tqdm(range(0, target_test.shape[0], batch_size)):
@@ -227,7 +221,6 @@ def main(args, save_path="", evaluating_test=True):  # noqa: C901
             ort_outs = ort_session.run(None, ort_inputs)
 
             temp_onnx_res = ort_outs[0]
-            #             softmax = torch.nn.Softmax(dim=1)
 
             for x in temp_onnx_res:
                 x_ = softmax(x, axis=0)
@@ -272,4 +265,4 @@ if __name__ == "__main__":
     parser.add_argument("--set_onnx", action="store_true", dest="set_onnx", default=False, help="set_onnx")
 
     args = parser.parse_args()
-    main(args, save_path_test, True)
+    main(args, save_path, True)

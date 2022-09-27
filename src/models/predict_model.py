@@ -6,8 +6,10 @@ import numpy as np
 import onnx
 import onnxruntime as ort
 import torch
+
 if torch.cuda.is_available():
     import setGPU
+
 import tqdm
 import yaml
 from scipy.special import softmax
@@ -28,6 +30,8 @@ params_3 = defn["features_3"]
 
 
 def main(args, save_path="", evaluating_test=True):  # noqa: C901
+
+    device = args.device
 
     test_1_arrays = []
     test_2_arrays = []

@@ -10,8 +10,10 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+
 if torch.cuda.is_available():
     import setGPU
+
 import tqdm
 import yaml
 

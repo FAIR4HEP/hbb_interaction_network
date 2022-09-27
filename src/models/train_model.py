@@ -18,6 +18,11 @@ import yaml
 from src.data.h5data import H5Data
 from src.models.models import GraphNet
 
+# import sys
+# sys.path.append("..")
+# from data.h5data import H5Data     # noqa: E402
+# from models import GraphNet  # noqa: E402
+
 os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 
 project_dir = Path(__file__).resolve().parents[2]
@@ -269,15 +274,18 @@ def main(args):  # noqa: C901
                 training = sub_X[2]
                 training_sv = sub_X[3]
                 target = sub_Y[0]
+
                 trainingv = (torch.FloatTensor(training)).to(device)
                 trainingv_sv = (torch.FloatTensor(training_sv)).to(device)
                 targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).to(device)
+                
             else:
                 idx_ = element
                 if idx_ == batch_num_tr - 1:
                     training = t_X_tr[2][idx_ * batch_size : -1]
                     training_sv = t_X_tr[3][idx_ * batch_size : -1]
                     target = t_Y_tr[0][idx_ * batch_size : -1]
+
                     trainingv = (torch.FloatTensor(training)).to(device)
                     trainingv_sv = (torch.FloatTensor(training_sv)).to(device)
                     targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).to(device)
@@ -286,6 +294,7 @@ def main(args):  # noqa: C901
                     training = t_X_tr[2][idx_ * batch_size : (idx_ + 1) * batch_size]
                     training_sv = t_X_tr[3][idx_ * batch_size : (idx_ + 1) * batch_size]
                     target = t_Y_tr[0][idx_ * batch_size : (idx_ + 1) * batch_size]
+
                     trainingv = (torch.FloatTensor(training)).to(device)
                     trainingv_sv = (torch.FloatTensor(training_sv)).to(device)
                     targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).to(device)
@@ -338,15 +347,18 @@ def main(args):  # noqa: C901
                 training = sub_X[2]
                 training_sv = sub_X[3]
                 target = sub_Y[0]
+
                 trainingv = (torch.FloatTensor(training)).to(device)
                 trainingv_sv = (torch.FloatTensor(training_sv)).to(device)
                 targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).to(device)
+
             else:
                 idx_ = element
                 if idx_ == batch_num_tr - 1:
                     training = t_X_tr[2][idx_ * batch_size : -1]
                     training_sv = t_X_tr[3][idx_ * batch_size : -1]
                     target = t_Y_tr[0][idx_ * batch_size : -1]
+
                     trainingv = (torch.FloatTensor(training)).to(device)
                     trainingv_sv = (torch.FloatTensor(training_sv)).to(device)
                     targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).to(device)
@@ -355,6 +367,7 @@ def main(args):  # noqa: C901
                     training = t_X_tr[2][idx_ * batch_size : (idx_ + 1) * batch_size]
                     training_sv = t_X_tr[3][idx_ * batch_size : (idx_ + 1) * batch_size]
                     target = t_Y_tr[0][idx_ * batch_size : (idx_ + 1) * batch_size]
+
                     trainingv = (torch.FloatTensor(training)).to(device)
                     trainingv_sv = (torch.FloatTensor(training_sv)).to(device)
                     targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).to(device)
@@ -516,6 +529,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--device", action="store", dest="device", default="cpu", help="device to train gnn; follow pytorch convention"
     )
+
 
     args = parser.parse_args()
     main(args)

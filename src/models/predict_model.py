@@ -161,6 +161,7 @@ def main(args, save_path="", evaluating_test=True):  # noqa: C901
     set_onnx = args.set_onnx
 
     prediction = np.array([])
+
     batch_size = args.batch_size
     torch.cuda.empty_cache()
 
@@ -184,6 +185,7 @@ def main(args, save_path="", evaluating_test=True):  # noqa: C901
         print(sum(p.numel() for p in gnn.parameters() if p.requires_grad))
 
         for j in tqdm.tqdm(range(0, target_test.shape[0], batch_size)):
+
             dummy_input_1 = torch.from_numpy(test[j : j + batch_size]).to(device)
             dummy_input_2 = torch.from_numpy(test_sv[j : j + batch_size]).to(device)
 
@@ -256,9 +258,7 @@ if __name__ == "__main__":
     parser.add_argument("--De", type=int, action="store", dest="De", default=5, help="De")
     parser.add_argument("--Do", type=int, action="store", dest="Do", default=6, help="Do")
     parser.add_argument("--hidden", type=int, action="store", dest="hidden", default=15, help="hidden")
-    parser.add_argument(
-        "--device", action="store", dest="device", default="cpu", help="device to train gnn; follow pytorch convention"
-    )
+
     parser.add_argument(
         "--batch-size",
         type=int,
@@ -267,6 +267,7 @@ if __name__ == "__main__":
         default=1024,
         help="batch_size",
     )
+
     parser.add_argument("--set_onnx", action="store_true", dest="set_onnx", default=False, help="set_onnx")
 
     args = parser.parse_args()

@@ -161,7 +161,7 @@ def main(args, save_path="", evaluating_test=True):  # noqa: C901
     set_onnx = args.set_onnx
 
     prediction = np.array([])
-    batch_size = 1000  # 1024
+    batch_size = args.batch_size
     torch.cuda.empty_cache()
 
     from models import GraphNet
@@ -208,9 +208,6 @@ def main(args, save_path="", evaluating_test=True):  # noqa: C901
 
             # Check that the IR is well formed
             onnx.checker.check_model(model)
-
-            # Print a human readable representation of the graph
-            # print(onnx.helper.printable_graph(model.graph))
 
             options = ort.SessionOptions()
             options.intra_op_num_threads = 1
@@ -261,6 +258,14 @@ if __name__ == "__main__":
     parser.add_argument("--hidden", type=int, action="store", dest="hidden", default=15, help="hidden")
     parser.add_argument(
         "--device", action="store", dest="device", default="cpu", help="device to train gnn; follow pytorch convention"
+    )
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        action="store",
+        dest="batch_size",
+        default=1024,
+        help="batch_size",
     )
     parser.add_argument("--set_onnx", action="store_true", dest="set_onnx", default=False, help="set_onnx")
 

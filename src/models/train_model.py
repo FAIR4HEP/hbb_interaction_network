@@ -18,11 +18,6 @@ import yaml
 from src.data.h5data import H5Data
 from src.models.models import GraphNet
 
-# import sys
-# sys.path.append("..")
-# from data.h5data import H5Data     # noqa: E402
-# from models import GraphNet  # noqa: E402
-
 os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 
 project_dir = Path(__file__).resolve().parents[2]
@@ -41,7 +36,6 @@ params_sv = defn["features_3"]
 
 def main(args):  # noqa: C901
     """Main entry point of the app"""
-    print(args.random_split)
     model_dict = {}
 
     device = args.device

@@ -7,10 +7,13 @@ import os
 from pathlib import Path
 
 import numpy as np
-import setGPU  # noqa: F401
 import torch
 import torch.nn as nn
 import torch.optim as optim
+
+if torch.cuda.is_available():
+    import setGPU  # noqa: F401
+
 import tqdm
 import yaml
 
@@ -34,15 +37,15 @@ with open(definitions) as yaml_file:
 N = defn["nobj_2"]  # number of charged particles
 N_sv = defn["nobj_3"]  # number of SVs
 n_targets = len(defn["reduced_labels"])  # number of classes
-device = "cpu"
 params = defn["features_2"]
 params_sv = defn["features_3"]
 
 
 def main(args):  # noqa: C901
     """Main entry point of the app"""
-    print(args.random_split)
     model_dict = {}
+
+    device = args.device
 
     files = glob.glob(os.path.join(train_path, "newdata_*.h5"))
     files_val = files[:5]  # take first 5 for validation
@@ -154,6 +157,7 @@ def main(args):  # noqa: C901
         vv_branch=int(vv_branch),
         De=args.De,
         Do=args.Do,
+        device=device,
     )
 
     """
@@ -166,6 +170,7 @@ def main(args):  # noqa: C901
          vv_branch = to allow vv_branch ? (0 or False by default)
          De = Output dimension of particle-particle interaction NN (fR)
          Do = Output dimension of pre-aggregator transformation NN (fO)
+         device = device to train gnn; follow pytorch convention
     """
 
     if load_def:
@@ -271,26 +276,29 @@ def main(args):  # noqa: C901
                 training = sub_X[2]
                 training_sv = sub_X[3]
                 target = sub_Y[0]
-                trainingv = (torch.FloatTensor(training)).cuda()
-                trainingv_sv = (torch.FloatTensor(training_sv)).cuda()
-                targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).cuda()
+
+                trainingv = (torch.FloatTensor(training)).to(device)
+                trainingv_sv = (torch.FloatTensor(training_sv)).to(device)
+                targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).to(device)
             else:
                 idx_ = element
                 if idx_ == batch_num_tr - 1:
                     training = t_X_tr[2][idx_ * batch_size : -1]
                     training_sv = t_X_tr[3][idx_ * batch_size : -1]
                     target = t_Y_tr[0][idx_ * batch_size : -1]
-                    trainingv = (torch.FloatTensor(training)).cuda()
-                    trainingv_sv = (torch.FloatTensor(training_sv)).cuda()
-                    targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).cuda()
+
+                    trainingv = (torch.FloatTensor(training)).to(device)
+                    trainingv_sv = (torch.FloatTensor(training_sv)).to(device)
+                    targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).to(device)
 
                 else:
                     training = t_X_tr[2][idx_ * batch_size : (idx_ + 1) * batch_size]
                     training_sv = t_X_tr[3][idx_ * batch_size : (idx_ + 1) * batch_size]
                     target = t_Y_tr[0][idx_ * batch_size : (idx_ + 1) * batch_size]
-                    trainingv = (torch.FloatTensor(training)).cuda()
-                    trainingv_sv = (torch.FloatTensor(training_sv)).cuda()
-                    targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).cuda()
+
+                    trainingv = (torch.FloatTensor(training)).to(device)
+                    trainingv_sv = (torch.FloatTensor(training_sv)).to(device)
+                    targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).to(device)
 
             if drop_rate > 0:
                 keep_indices = targetv == 0
@@ -311,8 +319,8 @@ def main(args):  # noqa: C901
                 trainingv_sv = trainingv_sv[:, keep_features, :]
 
             optimizer.zero_grad()
-            out = gnn(trainingv.cuda(), trainingv_sv.cuda())
-            batch_loss = loss(out, targetv.cuda())
+            out = gnn(trainingv.to(device), trainingv_sv.to(device))
+            batch_loss = loss(out, targetv.to(device))
             loss_training.append(batch_loss.item())
             batch_loss.backward()
             optimizer.step()
@@ -340,26 +348,30 @@ def main(args):  # noqa: C901
                 training = sub_X[2]
                 training_sv = sub_X[3]
                 target = sub_Y[0]
-                trainingv = (torch.FloatTensor(training)).cuda()
-                trainingv_sv = (torch.FloatTensor(training_sv)).cuda()
-                targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).cuda()
+
+                trainingv = (torch.FloatTensor(training)).to(device)
+                trainingv_sv = (torch.FloatTensor(training_sv)).to(device)
+                targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).to(device)
+
             else:
                 idx_ = element
                 if idx_ == batch_num_tr - 1:
                     training = t_X_tr[2][idx_ * batch_size : -1]
                     training_sv = t_X_tr[3][idx_ * batch_size : -1]
                     target = t_Y_tr[0][idx_ * batch_size : -1]
-                    trainingv = (torch.FloatTensor(training)).cuda()
-                    trainingv_sv = (torch.FloatTensor(training_sv)).cuda()
-                    targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).cuda()
+
+                    trainingv = (torch.FloatTensor(training)).to(device)
+                    trainingv_sv = (torch.FloatTensor(training_sv)).to(device)
+                    targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).to(device)
 
                 else:
                     training = t_X_tr[2][idx_ * batch_size : (idx_ + 1) * batch_size]
                     training_sv = t_X_tr[3][idx_ * batch_size : (idx_ + 1) * batch_size]
                     target = t_Y_tr[0][idx_ * batch_size : (idx_ + 1) * batch_size]
-                    trainingv = (torch.FloatTensor(training)).cuda()
-                    trainingv_sv = (torch.FloatTensor(training_sv)).cuda()
-                    targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).cuda()
+
+                    trainingv = (torch.FloatTensor(training)).to(device)
+                    trainingv_sv = (torch.FloatTensor(training_sv)).to(device)
+                    targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).to(device)
 
             if len(drop_pfeatures) > 0:
                 keep_features = [i for i in np.arange(0, len(params), 1, dtype=int) if i not in drop_pfeatures]
@@ -368,10 +380,10 @@ def main(args):  # noqa: C901
                 keep_features = [i for i in np.arange(0, len(params_sv), 1, dtype=int) if i not in drop_svfeatures]
                 trainingv_sv = trainingv_sv[:, keep_features, :]
 
-            out = gnn(trainingv.cuda(), trainingv_sv.cuda())
+            out = gnn(trainingv.to(device), trainingv_sv.to(device))
 
             lst.append(softmax(out).cpu().data.numpy())
-            l_val = loss(out, targetv.cuda())
+            l_val = loss(out, targetv.to(device))
             loss_val.append(l_val.item())
 
             correct.append(target)
@@ -514,6 +526,9 @@ if __name__ == "__main__":
         dest="random_split",
         default=False,
         help="randomly split train test data if enabled",
+    )
+    parser.add_argument(
+        "--device", action="store", dest="device", default="cpu", help="device to train gnn; follow pytorch convention"
     )
 
     args = parser.parse_args()

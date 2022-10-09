@@ -5,8 +5,11 @@ from pathlib import Path
 import numpy as np
 import onnx
 import onnxruntime as ort
-import setGPU  # noqa: F401
 import torch
+
+if torch.cuda.is_available():
+    import setGPU  # noqa: F401
+
 import tqdm
 import yaml
 from scipy.special import softmax
@@ -27,6 +30,8 @@ params_3 = defn["features_3"]
 
 
 def main(args, save_path="", evaluating_test=True):  # noqa: C901
+
+    device = args.device
 
     test_1_arrays = []
     test_2_arrays = []
@@ -160,7 +165,8 @@ def main(args, save_path="", evaluating_test=True):  # noqa: C901
     set_onnx = args.set_onnx
 
     prediction = np.array([])
-    batch_size = 1000  # 1024
+
+    batch_size = args.batch_size
     torch.cuda.empty_cache()
 
     from models import GraphNet
@@ -175,6 +181,7 @@ def main(args, save_path="", evaluating_test=True):  # noqa: C901
         vv_branch=int(vv_branch),
         De=args.De,
         Do=args.Do,
+        device=args.device,
     )
 
     if set_onnx is False:
@@ -182,8 +189,9 @@ def main(args, save_path="", evaluating_test=True):  # noqa: C901
         print(sum(p.numel() for p in gnn.parameters() if p.requires_grad))
 
         for j in tqdm.tqdm(range(0, target_test.shape[0], batch_size)):
-            dummy_input_1 = torch.from_numpy(test[j : j + batch_size]).cuda()
-            dummy_input_2 = torch.from_numpy(test_sv[j : j + batch_size]).cuda()
+
+            dummy_input_1 = torch.from_numpy(test[j : j + batch_size]).to(device)
+            dummy_input_2 = torch.from_numpy(test_sv[j : j + batch_size]).to(device)
 
             out_test = gnn(dummy_input_1, dummy_input_2)
             out_test = out_test.cpu().data.numpy()
@@ -206,9 +214,6 @@ def main(args, save_path="", evaluating_test=True):  # noqa: C901
 
             # Check that the IR is well formed
             onnx.checker.check_model(model)
-
-            # Print a human readable representation of the graph
-            # print(onnx.helper.printable_graph(model.graph))
 
             options = ort.SessionOptions()
             options.intra_op_num_threads = 1
@@ -257,6 +262,16 @@ if __name__ == "__main__":
     parser.add_argument("--De", type=int, action="store", dest="De", default=5, help="De")
     parser.add_argument("--Do", type=int, action="store", dest="Do", default=6, help="Do")
     parser.add_argument("--hidden", type=int, action="store", dest="hidden", default=15, help="hidden")
+
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        action="store",
+        dest="batch_size",
+        default=1024,
+        help="batch_size",
+    )
+
     parser.add_argument("--set_onnx", action="store_true", dest="set_onnx", default=False, help="set_onnx")
 
     args = parser.parse_args()

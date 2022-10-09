@@ -17,6 +17,7 @@ class GraphNet(nn.Module):
         De=5,
         Do=6,
         softmax=False,
+        device="cpu",
     ):
         super(GraphNet, self).__init__()
         self.hidden = int(hidden)
@@ -31,6 +32,7 @@ class GraphNet(nn.Module):
         self.De = De
         self.Dx = 0
         self.Do = Do
+        self.device = device
         self.n_targets = n_targets
         self.assign_matrices()
         self.assign_matrices_SV()
@@ -40,28 +42,28 @@ class GraphNet(nn.Module):
             self.assign_matrices_SVSV()
 
         self.Ra = torch.ones(self.Dr, self.Nr)
-        self.fr1 = nn.Linear(2 * self.P + self.Dr, self.hidden).cuda()
-        self.fr2 = nn.Linear(self.hidden, int(self.hidden)).cuda()
-        self.fr3 = nn.Linear(int(self.hidden), self.De).cuda()
-        self.fr1_pv = nn.Linear(self.S + self.P + self.Dr, self.hidden).cuda()
-        self.fr2_pv = nn.Linear(self.hidden, int(self.hidden)).cuda()
-        self.fr3_pv = nn.Linear(int(self.hidden), self.De).cuda()
+        self.fr1 = nn.Linear(2 * self.P + self.Dr, self.hidden).to(self.device)
+        self.fr2 = nn.Linear(self.hidden, int(self.hidden)).to(self.device)
+        self.fr3 = nn.Linear(int(self.hidden), self.De).to(self.device)
+        self.fr1_pv = nn.Linear(self.S + self.P + self.Dr, self.hidden).to(self.device)
+        self.fr2_pv = nn.Linear(self.hidden, int(self.hidden)).to(self.device)
+        self.fr3_pv = nn.Linear(int(self.hidden), self.De).to(self.device)
         if self.vv_branch:
-            self.fr1_vv = nn.Linear(2 * self.S + self.Dr, self.hidden).cuda()
-            self.fr2_vv = nn.Linear(self.hidden, int(self.hidden)).cuda()
-            self.fr3_vv = nn.Linear(int(self.hidden), self.De).cuda()
-        self.fo1 = nn.Linear(self.P + self.Dx + (2 * self.De), self.hidden).cuda()
-        self.fo2 = nn.Linear(self.hidden, int(self.hidden)).cuda()
-        self.fo3 = nn.Linear(int(self.hidden), self.Do).cuda()
+            self.fr1_vv = nn.Linear(2 * self.S + self.Dr, self.hidden).to(self.device)
+            self.fr2_vv = nn.Linear(self.hidden, int(self.hidden)).to(self.device)
+            self.fr3_vv = nn.Linear(int(self.hidden), self.De).to(self.device)
+        self.fo1 = nn.Linear(self.P + self.Dx + (2 * self.De), self.hidden).to(self.device)
+        self.fo2 = nn.Linear(self.hidden, int(self.hidden)).to(self.device)
+        self.fo3 = nn.Linear(int(self.hidden), self.Do).to(self.device)
         if self.vv_branch:
-            self.fo1_v = nn.Linear(self.S + self.Dx + (2 * self.De), self.hidden).cuda()
-            self.fo2_v = nn.Linear(self.hidden, int(self.hidden)).cuda()
-            self.fo3_v = nn.Linear(int(self.hidden), self.Do).cuda()
+            self.fo1_v = nn.Linear(self.S + self.Dx + (2 * self.De), self.hidden).to(self.device)
+            self.fo2_v = nn.Linear(self.hidden, int(self.hidden)).to(self.device)
+            self.fo3_v = nn.Linear(int(self.hidden), self.Do).to(self.device)
 
         if self.vv_branch:
-            self.fc_fixed = nn.Linear(2 * self.Do, self.n_targets).cuda()
+            self.fc_fixed = nn.Linear(2 * self.Do, self.n_targets).to(self.device)
         else:
-            self.fc_fixed = nn.Linear(self.Do, self.n_targets).cuda()
+            self.fc_fixed = nn.Linear(self.Do, self.n_targets).to(self.device)
 
     def assign_matrices(self):
         self.Rr = torch.zeros(self.N, self.Nr)
@@ -70,8 +72,8 @@ class GraphNet(nn.Module):
         for i, (r, s) in enumerate(receiver_sender_list):
             self.Rr[r, i] = 1
             self.Rs[s, i] = 1
-        self.Rr = (self.Rr).cuda()
-        self.Rs = (self.Rs).cuda()
+        self.Rr = (self.Rr).to(self.device)
+        self.Rs = (self.Rs).to(self.device)
 
     def assign_matrices_SV(self):
         self.Rk = torch.zeros(self.N, self.Nt)
@@ -80,8 +82,8 @@ class GraphNet(nn.Module):
         for i, (k, v) in enumerate(receiver_sender_list):
             self.Rk[k, i] = 1
             self.Rv[v, i] = 1
-        self.Rk = (self.Rk).cuda()
-        self.Rv = (self.Rv).cuda()
+        self.Rk = (self.Rk).to(self.device)
+        self.Rv = (self.Rv).to(self.device)
 
     def assign_matrices_SVSV(self):
         self.Rl = torch.zeros(self.Nv, self.Ns)
@@ -90,8 +92,8 @@ class GraphNet(nn.Module):
         for i, (l, u) in enumerate(receiver_sender_list):
             self.Rl[l, i] = 1
             self.Ru[u, i] = 1
-        self.Rl = (self.Rl).cuda()
-        self.Ru = (self.Ru).cuda()
+        self.Rl = (self.Rl).to(self.device)
+        self.Ru = (self.Ru).to(self.device)
 
     def forward(self, x, y):
         # PF Candidate - PF Candidate
@@ -182,4 +184,4 @@ class GraphNet(nn.Module):
     def tmul(self, x, y):  # Takes (I * J * K)(K * L) -> I * J * L
         x_shape = x.size()
         y_shape = y.size()
-        return torch.mm(x.view(-1, x_shape[2]), y).view(-1, x_shape[1], y_shape[1])
+        return torch.mm(x.reshape(-1, x_shape[2]), y).reshape(-1, x_shape[1], y_shape[1])

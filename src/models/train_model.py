@@ -12,7 +12,7 @@ import torch.nn as nn
 import torch.optim as optim
 
 if torch.cuda.is_available():
-    import setGPU
+    import setGPU  # noqa: F401
 
 import tqdm
 import yaml

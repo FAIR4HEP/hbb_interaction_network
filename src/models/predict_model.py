@@ -8,7 +8,7 @@ import onnxruntime as ort
 import torch
 
 if torch.cuda.is_available():
-    import setGPU
+    import setGPU  # noqa: F401
 
 import tqdm
 import yaml

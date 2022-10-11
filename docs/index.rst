@@ -15,6 +15,12 @@ Contents:
    commands
    dataset
 
+.. toctree::
+    :hidden:
+    :glob:
+    :caption: Data API Reference
+
+    api/src
 
 
 Indices and tables

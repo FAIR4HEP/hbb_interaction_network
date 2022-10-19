@@ -1,0 +1,36 @@
+# syntax=docker/dockerfile:1
+
+FROM gitlab-registry.nrp-nautilus.io/prp/jupyter-stack/prp:latest
+
+USER root
+RUN apt-get update && \
+    apt-get upgrade -qq -y && \
+    apt-get install -qq -y --no-install-recommends \
+    emacs \
+    cmake && \
+    apt-get -y autoclean && \
+    apt-get -y autoremove && \
+    rm -rf /var/lib/apt/lists/* && \
+    rm -rf /tmp/*
+ADD install_xrootd.sh install_xrootd.sh
+RUN bash install_xrootd.sh && \
+    rm install_xrootd.sh
+ENV PATH /opt/xrootd/bin:${PATH}
+ENV LD_LIBRARY_PATH /opt/xrootd/lib
+
+WORKDIR /home/$NB_USER
+RUN mamba install xrootd
+RUN mamba install -c pytorch -c conda-forge \
+    pytorch=1.12.0 \
+    torchvision \
+    torchaudio \
+    cudatoolkit=11.6
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
+USER root
+RUN fix-permissions "${CONDA_DIR}" && \
+    fix-permissions "/home/${NB_USER}"
+
+USER $NB_USER
+CMD [ "bash" ]

@@ -1,6 +1,4 @@
 --extra-index-url https://download.pytorch.org/whl/cpu
-# local package
--e .
 awkward
 awscli
 
@@ -10,6 +8,8 @@ cernopendata-client[pycurl,xrootd]
 click
 coverage
 flake8
+# local package
+git+https://github.com/fair4hep/hbb_interaction/network@main
 h5py
 numpy
 python-dotenv>=0.5.1

@@ -42,7 +42,24 @@ params_sv = defn["features_3"]
 
 
 def main(args):  # noqa: C901
-    """Main entry point of the app"""
+    """Training function that takes a collection of arguments.
+    Attributes:
+      args.outdir: Output directory for trained models
+      args.npy_indir: intput directory for data
+      args.vv_branch: consider vertex-vertex interaction in model
+      args.De: The dimension of particle-vertex and particle-particle latent space
+      args.Do: The dimenstion of pre-aggregate latent space representation
+      args.hidden: Number of nodes in hidden layers of MLP
+      args.drop_rate: drop-rate for signal (Hbb jet) data to train on a dataset with skewed statistics
+      args.epoch: Number of Epochs
+      args.drop_pfeatures: comma separated indices of the particle candidate features to be dropped
+      args.drop_svfeatures: comma separated indices of the secondary vertex features to be dropped
+      args.label: a label for the model to be used as a suffix for saving model and its metadata
+      args.batch_size: batch_size
+      args.load_def: Load weights from default model (looks for the model "../../models/trained_models/gnn_baseline_best.pth" )
+      args.random_split: randomly split train test data if enabled
+      args.device: device to train gnn; follow pytorch convention
+    """
     model_dict = {}
 
     device = args.device

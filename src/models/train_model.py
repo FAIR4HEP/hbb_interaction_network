@@ -43,6 +43,7 @@ params_sv = defn["features_3"]
 
 def main(args):  # noqa: C901
     """Training function that takes a collection of arguments.
+
     Attributes:
       args.outdir: Output directory for trained models
       args.npy_indir: intput directory for data
@@ -59,6 +60,7 @@ def main(args):  # noqa: C901
       args.load_def: Load weights from default model (looks for the model "../../models/trained_models/gnn_baseline_best.pth" )
       args.random_split: randomly split train test data if enabled
       args.device: device to train gnn; follow pytorch convention
+
     """
     model_dict = {}
 

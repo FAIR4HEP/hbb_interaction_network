@@ -57,7 +57,7 @@ def main(args):  # noqa: C901
       args.drop_svfeatures: comma separated indices of the secondary vertex features to be dropped
       args.label: a label for the model to be used as a suffix for saving model and its metadata
       args.batch_size: batch_size
-      args.load_def: Load weights from default model (looks for the model "../../models/trained_models/gnn_baseline_best.pth" )
+      args.load_def: Load weights from default model (default: "../../models/trained_models/gnn_baseline_best.pth")
       args.random_split: randomly split train test data if enabled
       args.device: device to train gnn; follow pytorch convention
 
@@ -285,7 +285,12 @@ def main(args):  # noqa: C901
             total_ = int(n_train / batch_size)
         else:
             batch_num_tr = int(len(t_X_tr[1]) / batch_size)
-            print("batch num, X_tr_1, batch_size: ", batch_num_tr, len(t_X_tr[1]), batch_size)
+            print(
+                "batch num, X_tr_1, batch_size: ",
+                batch_num_tr,
+                len(t_X_tr[1]),
+                batch_size,
+            )
             iterator = range(batch_num_tr)
             total_ = batch_num_tr
 
@@ -357,7 +362,12 @@ def main(args):  # noqa: C901
             total_ = int(n_val / batch_size)
         else:
             batch_num_te = int(len(t_X_te[1]) / batch_size)
-            print("batch num, X_te_1, batch_size: ", batch_num_te, len(t_X_te[1]), batch_size)
+            print(
+                "batch num, X_te_1, batch_size: ",
+                batch_num_te,
+                len(t_X_te[1]),
+                batch_size,
+            )
             iterator = range(batch_num_te)
             total_ = batch_num_te
 
@@ -547,7 +557,11 @@ if __name__ == "__main__":
         help="randomly split train test data if enabled",
     )
     parser.add_argument(
-        "--device", action="store", dest="device", default="cpu", help="device to train gnn; follow pytorch convention"
+        "--device",
+        action="store",
+        dest="device",
+        default="cpu",
+        help="device to train gnn; follow pytorch convention",
     )
 
     args = parser.parse_args()

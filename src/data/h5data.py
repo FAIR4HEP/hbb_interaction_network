@@ -10,7 +10,7 @@ import numpy as np
 
 class FilePreloader(Thread):
     """Class implementing a thread.
- 
+
     Attributes:
       file_names (list): list of data files to use for training
       batch_size (int): size of training batches
@@ -66,11 +66,11 @@ def data_class_getter(name):
 
 class Data(object):
     """Class providing an interface to the input training data. Derived classes should implement the load_data function.
-    
+
     Attributes:
       file_names: list of data files to use for training
       batch_size: size of training batches
-    
+
     """
 
     def __init__(self, batch_size, cache=None, spectators=False):

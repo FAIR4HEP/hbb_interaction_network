@@ -1,4 +1,4 @@
---extra-index-url https://download.pytorch.org/whl/cpu
+--extra-index-url https://download.pytorch.org/whl/cpu,https://pypi.ngc.nvidia.com
 awkward
 awscli
 
@@ -12,6 +12,9 @@ flake8
 git+https://github.com/fair4hep/hbb_interaction_network@main
 h5py
 numpy
+nvidia-pyindex
+nvidia-tensorrt
+onnxruntime
 python-dotenv>=0.5.1
 scikit-learn
 setGPU

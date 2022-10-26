@@ -35,8 +35,8 @@ def main(args, evaluating_test=True):  # noqa: C901
 
     test_2 = []
     test_3 = []
-    test_spec = []
-    target_test = []
+    test_specs = []
+    target_tests = []
 
     if evaluating_test:
         dataset = "test"
@@ -52,12 +52,12 @@ def main(args, evaluating_test=True):  # noqa: C901
     test_sv = np.concatenate(test_3)
 
     for test_file in sorted(glob.glob(f"{save_path}/{dataset}_*_spectators.npy")):
-        test_spec.append(np.load(test_file))
-    test_spec = np.concatenate(test_spec)
+        test_specs.append(np.load(test_file))
+    test_spec = np.concatenate(test_specs)
 
     for test_file in sorted(glob.glob(f"{save_path}/{dataset}_*_truth.npy")):
-        target_test.append(np.load(test_file))
-    target_test = np.concatenate(target_test)
+        target_tests.append(np.load(test_file))
+    target_test = np.concatenate(target_tests)
 
     fj_pt = test_spec[:, 0, 0]
     fj_eta = test_spec[:, 0, 1]
@@ -72,7 +72,7 @@ def main(args, evaluating_test=True):  # noqa: C901
     min_msd = -999  # 40
     max_msd = 9999  # 200
 
-    for array in [test_2, test_3, test_spec, target_test]:
+    for array in [test, test_sv, test_spec, target_test]:
         array = array[
             (fj_sdmass > min_msd)
             & (fj_sdmass < max_msd)

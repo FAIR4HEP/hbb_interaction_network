@@ -14,6 +14,7 @@ h5py
 numpy
 nvidia-pyindex
 nvidia-tensorrt
+onnx
 onnxruntime
 python-dotenv>=0.5.1
 scikit-learn

@@ -20,11 +20,6 @@ import yaml
 from src.data.h5data import H5Data
 from src.models.models import GraphNet
 
-# import sys
-# sys.path.append("..")
-# from data.h5data import H5Data     # noqa: E402
-# from models import GraphNet  # noqa: E402
-
 os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 
 project_dir = Path(__file__).resolve().parents[2]
@@ -57,7 +52,7 @@ def main(args):  # noqa: C901
       args.drop_svfeatures: comma separated indices of the secondary vertex features to be dropped
       args.label: a label for the model to be used as a suffix for saving model and its metadata
       args.batch_size: batch_size
-      args.load_def: Load weights from default model (default: "../../models/trained_models/gnn_baseline_best.pth")
+      args.load_def: Load weights from default model (default: `{project_dir}/models/trained_models/gnn_baseline_best.pth`)
       args.random_split: randomly split train test data if enabled
       args.device: device to train gnn; follow pytorch convention
 
@@ -67,8 +62,11 @@ def main(args):  # noqa: C901
     device = args.device
 
     files = glob.glob(os.path.join(train_path, "newdata_*.h5"))
-    files_val = files[:5]  # take first 5 for validation
-    files_train = files[5:]  # take rest for training
+    # take first 10% of files for validation
+    # n_val should be 5 for full dataset
+    n_val = max(1, int(0.1 * len(files)))
+    files_val = files[:n_val]
+    files_train = files[n_val:]
 
     outdir = args.outdir
     vv_branch = args.vv_branch
@@ -193,7 +191,7 @@ def main(args):  # noqa: C901
     """
 
     if load_def:
-        if os.path.exists("../../models/trained_models/gnn_baseline_best.pth"):
+        if os.path.exists(f"{project_dir}/models/trained_models/gnn_baseline_best.pth"):
             defmodel_exists = True
         else:
             defmodel_exists = False
@@ -202,7 +200,7 @@ def main(args):  # noqa: C901
             load_def = False
 
     if load_def:
-        def_state_dict = torch.load("../../models/trained_models/gnn_baseline_best.pth")
+        def_state_dict = torch.load(f"{project_dir}/models/trained_models/gnn_baseline_best.pth")
         new_state_dict = gnn.state_dict()
         for key in def_state_dict.keys():
             if key not in ["fr1_pv.weight", "fr1.weight", "fo1.weight"]:
@@ -479,7 +477,7 @@ if __name__ == "__main__":
         type=str,
         action="store",
         dest="outdir",
-        default="../../models/",
+        default=f"{project_dir}/models/",
         help="Output directory",
     )
     parser.add_argument(

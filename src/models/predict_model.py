@@ -33,69 +33,59 @@ def main(args, save_path="", evaluating_test=True):  # noqa: C901
 
     device = args.device
 
-    test_1_arrays = []
-    test_2_arrays = []
-    test_3_arrays = []
-    test_spec_arrays = []
-    target_test_arrays = []
+    test_1 = []
+    test_2 = []
+    test_3 = []
+    test_spec = []
+    target_test = []
 
     if evaluating_test:
 
         for test_file in sorted(glob.glob(save_path + "test_0_features_1.npy")):
-            test_1_arrays.append(np.load(test_file))
-        test_1 = np.concatenate(test_1_arrays)
+            test_1.append(np.load(test_file))
+        test_1 = np.concatenate(test_1)
 
         for test_file in sorted(glob.glob(save_path + "test_0_features_2.npy")):
-            test_2_arrays.append(np.load(test_file))
-        test_2 = np.concatenate(test_2_arrays)
+            test_2.append(np.load(test_file))
+        test_2 = np.concatenate(test_2)
 
         for test_file in sorted(glob.glob(save_path + "test_0_features_3.npy")):
-            test_3_arrays.append(np.load(test_file))
-        test_3 = np.concatenate(test_3_arrays)
+            test_3.append(np.load(test_file))
+        test_3 = np.concatenate(test_3)
 
         for test_file in sorted(glob.glob(save_path + "test_0_spectators_0.npy")):
-            test_spec_arrays.append(np.load(test_file))
-        test_spec = np.concatenate(test_spec_arrays)
+            test_spec.append(np.load(test_file))
+        test_spec = np.concatenate(test_spec)
 
         for test_file in sorted(glob.glob(save_path + "test_0_truth_0.npy")):
-            target_test_arrays.append(np.load(test_file))
-        target_test = np.concatenate(target_test_arrays)
+            target_test.append(np.load(test_file))
+        target_test = np.concatenate(target_test)
 
     else:
         for test_file in sorted(glob.glob(save_path + "train_val_*_features_1.npy")):
-            test_1_arrays.append(np.load(test_file))
-        test_1 = np.concatenate(test_1_arrays)
+            test_1.append(np.load(test_file))
+        test_1 = np.concatenate(test_1)
 
         for test_file in sorted(glob.glob(save_path + "train_val_*_features_2.npy")):
-            test_2_arrays.append(np.load(test_file))
-        test_2 = np.concatenate(test_2_arrays)
+            test_2.append(np.load(test_file))
+        test_2 = np.concatenate(test_2)
 
         for test_file in sorted(glob.glob(save_path + "train_val_*_features_3.npy")):
-            test_3_arrays.append(np.load(test_file))
-        test_3 = np.concatenate(test_3_arrays)
+            test_3.append(np.load(test_file))
+        test_3 = np.concatenate(test_3)
 
         for test_file in sorted(glob.glob(save_path + "train_val_*_spectators_0.npy")):
-            test_spec_arrays.append(np.load(test_file))
-        test_spec = np.concatenate(test_spec_arrays)
+            test_spec.append(np.load(test_file))
+        test_spec = np.concatenate(test_spec)
 
         for test_file in sorted(glob.glob(save_path + "train_val_*_truth_0.npy")):
-            target_test_arrays.append(np.load(test_file))
-        target_test = np.concatenate(target_test_arrays)
+            target_test.append(np.load(test_file))
+        target_test = np.concatenate(target_test)
 
-    del test_1_arrays
-    del test_2_arrays
-    del test_3_arrays
-    del test_spec_arrays
-    del target_test_arrays
     test_1 = np.swapaxes(test_1, 1, 2)
     test_2 = np.swapaxes(test_2, 1, 2)
     test_3 = np.swapaxes(test_3, 1, 2)
     test_spec = np.swapaxes(test_spec, 1, 2)
-    print(test_2.shape)
-    print(test_3.shape)
-    print(target_test.shape)
-    print(test_spec.shape)
-    print(target_test.shape)
     fj_pt = test_spec[:, 0, 0]
     fj_eta = test_spec[:, 1, 0]
     fj_sdmass = test_spec[:, 2, 0]
@@ -109,51 +99,16 @@ def main(args, save_path="", evaluating_test=True):  # noqa: C901
     min_msd = -999  # 40
     max_msd = 9999  # 200
 
-    test_1 = test_1[
-        (fj_sdmass > min_msd)
-        & (fj_sdmass < max_msd)
-        & (fj_eta > min_eta)
-        & (fj_eta < max_eta)
-        & (fj_pt > min_pt)
-        & (fj_pt < max_pt)
-        & no_undef
-    ]
-    test_2 = test_2[
-        (fj_sdmass > min_msd)
-        & (fj_sdmass < max_msd)
-        & (fj_eta > min_eta)
-        & (fj_eta < max_eta)
-        & (fj_pt > min_pt)
-        & (fj_pt < max_pt)
-        & no_undef
-    ]
-    test_3 = test_3[
-        (fj_sdmass > min_msd)
-        & (fj_sdmass < max_msd)
-        & (fj_eta > min_eta)
-        & (fj_eta < max_eta)
-        & (fj_pt > min_pt)
-        & (fj_pt < max_pt)
-        & no_undef
-    ]
-    test_spec = test_spec[
-        (fj_sdmass > min_msd)
-        & (fj_sdmass < max_msd)
-        & (fj_eta > min_eta)
-        & (fj_eta < max_eta)
-        & (fj_pt > min_pt)
-        & (fj_pt < max_pt)
-        & no_undef
-    ]
-    target_test = target_test[
-        (fj_sdmass > min_msd)
-        & (fj_sdmass < max_msd)
-        & (fj_eta > min_eta)
-        & (fj_eta < max_eta)
-        & (fj_pt > min_pt)
-        & (fj_pt < max_pt)
-        & no_undef
-    ]
+    for array in [test_1, test_2, test_3, test_spec, target_test]:
+        array = array[
+            (fj_sdmass > min_msd)
+            & (fj_sdmass < max_msd)
+            & (fj_eta > min_eta)
+            & (fj_eta < max_eta)
+            & (fj_pt > min_pt)
+            & (fj_pt < max_pt)
+            & no_undef
+        ]
 
     # Convert two sets into two branch with one set in both and one set in only one (Use for this file)
     test = test_2
@@ -220,7 +175,10 @@ def main(args, save_path="", evaluating_test=True):  # noqa: C901
             ort_session = ort.InferenceSession(model_path, options, providers=[("CUDAExecutionProvider")])
 
             # compute ONNX Runtime output prediction
-            ort_inputs = {ort_session.get_inputs()[0].name: dummy_input_1, ort_session.get_inputs()[1].name: dummy_input_2}
+            ort_inputs = {
+                ort_session.get_inputs()[0].name: dummy_input_1,
+                ort_session.get_inputs()[1].name: dummy_input_2,
+            }
             ort_outs = ort_session.run(None, ort_inputs)
 
             temp_onnx_res = ort_outs[0]
@@ -231,7 +189,6 @@ def main(args, save_path="", evaluating_test=True):  # noqa: C901
 
         prediction = np.array(onnx_soft_res)
 
-    print(target_test.shape, prediction.shape)
     auc = roc_auc_score(target_test[:, 1], prediction[:, 1])
     print("AUC: ", auc)
     acc = accuracy_score(target_test[:, 0], prediction[:, 0] >= 0.5)
@@ -247,8 +204,6 @@ def main(args, save_path="", evaluating_test=True):  # noqa: C901
     print("Accuray 0: ", acc)
     acc = accuracy_score(target_test[idx][:, 1], prediction[idx][:, 1] >= 0.5)
     print("Accuray 1: ", acc)
-    idx_bar = target_sums != 1
-    print(target_test[idx_bar][0:10, :])
 
 
 if __name__ == "__main__":
@@ -272,7 +227,13 @@ if __name__ == "__main__":
         help="batch_size",
     )
 
-    parser.add_argument("--set_onnx", action="store_true", dest="set_onnx", default=False, help="set_onnx")
+    parser.add_argument(
+        "--set_onnx",
+        action="store_true",
+        dest="set_onnx",
+        default=False,
+        help="set_onnx",
+    )
 
     args = parser.parse_args()
     main(args, save_path, True)

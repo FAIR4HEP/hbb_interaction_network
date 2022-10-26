@@ -18,6 +18,7 @@ RUN bash install_xrootd.sh && \
 ENV PATH /opt/xrootd/bin:${PATH}
 ENV LD_LIBRARY_PATH /opt/xrootd/lib
 
+USER $NB_USER
 WORKDIR /home/$NB_USER
 RUN mamba install xrootd
 RUN mamba install -c pytorch -c conda-forge \
@@ -25,8 +26,8 @@ RUN mamba install -c pytorch -c conda-forge \
     torchvision \
     torchaudio \
     cudatoolkit=11.6
-COPY requirements.txt .
-RUN pip install -r requirements.txt
+COPY requirements_gpu.txt .
+RUN pip install -r requirements_gpu.txt
 
 USER root
 RUN fix-permissions "${CONDA_DIR}" && \

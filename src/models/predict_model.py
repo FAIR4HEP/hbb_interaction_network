@@ -25,70 +25,43 @@ N = defn["nobj_2"]  # number of charged particles
 N_sv = defn["nobj_3"]  # number of SVs
 n_targets = len(defn["reduced_labels"])  # number of classes
 spectators = defn["spectators"]
-params_2 = defn["features_2"]
-params_3 = defn["features_3"]
+params = defn["features_2"]
+params_sv = defn["features_3"]
 
 
-def main(args, save_path="", evaluating_test=True):  # noqa: C901
+def main(args, evaluating_test=True):  # noqa: C901
 
     device = args.device
 
-    test_1 = []
     test_2 = []
     test_3 = []
     test_spec = []
     target_test = []
 
     if evaluating_test:
-
-        for test_file in sorted(glob.glob(save_path + "test_0_features_1.npy")):
-            test_1.append(np.load(test_file))
-        test_1 = np.concatenate(test_1)
-
-        for test_file in sorted(glob.glob(save_path + "test_0_features_2.npy")):
-            test_2.append(np.load(test_file))
-        test_2 = np.concatenate(test_2)
-
-        for test_file in sorted(glob.glob(save_path + "test_0_features_3.npy")):
-            test_3.append(np.load(test_file))
-        test_3 = np.concatenate(test_3)
-
-        for test_file in sorted(glob.glob(save_path + "test_0_spectators_0.npy")):
-            test_spec.append(np.load(test_file))
-        test_spec = np.concatenate(test_spec)
-
-        for test_file in sorted(glob.glob(save_path + "test_0_truth_0.npy")):
-            target_test.append(np.load(test_file))
-        target_test = np.concatenate(target_test)
-
+        dataset = "test"
     else:
-        for test_file in sorted(glob.glob(save_path + "train_val_*_features_1.npy")):
-            test_1.append(np.load(test_file))
-        test_1 = np.concatenate(test_1)
+        dataset = "train"
 
-        for test_file in sorted(glob.glob(save_path + "train_val_*_features_2.npy")):
-            test_2.append(np.load(test_file))
-        test_2 = np.concatenate(test_2)
+    for test_file in sorted(glob.glob(f"{save_path}/{dataset}_*_features_2.npy")):
+        test_2.append(np.load(test_file))
+    test = np.concatenate(test_2)
 
-        for test_file in sorted(glob.glob(save_path + "train_val_*_features_3.npy")):
-            test_3.append(np.load(test_file))
-        test_3 = np.concatenate(test_3)
+    for test_file in sorted(glob.glob(f"{save_path}/{dataset}_*_features_3.npy")):
+        test_3.append(np.load(test_file))
+    test_sv = np.concatenate(test_3)
 
-        for test_file in sorted(glob.glob(save_path + "train_val_*_spectators_0.npy")):
-            test_spec.append(np.load(test_file))
-        test_spec = np.concatenate(test_spec)
+    for test_file in sorted(glob.glob(f"{save_path}/{dataset}_*_spectators.npy")):
+        test_spec.append(np.load(test_file))
+    test_spec = np.concatenate(test_spec)
 
-        for test_file in sorted(glob.glob(save_path + "train_val_*_truth_0.npy")):
-            target_test.append(np.load(test_file))
-        target_test = np.concatenate(target_test)
+    for test_file in sorted(glob.glob(f"{save_path}/{dataset}_*_truth.npy")):
+        target_test.append(np.load(test_file))
+    target_test = np.concatenate(target_test)
 
-    test_1 = np.swapaxes(test_1, 1, 2)
-    test_2 = np.swapaxes(test_2, 1, 2)
-    test_3 = np.swapaxes(test_3, 1, 2)
-    test_spec = np.swapaxes(test_spec, 1, 2)
     fj_pt = test_spec[:, 0, 0]
-    fj_eta = test_spec[:, 1, 0]
-    fj_sdmass = test_spec[:, 2, 0]
+    fj_eta = test_spec[:, 0, 1]
+    fj_sdmass = test_spec[:, 0, 2]
     # no_undef = np.sum(target_test,axis=1) == 1
     no_undef = fj_pt > -999  # no cut
 
@@ -99,7 +72,7 @@ def main(args, save_path="", evaluating_test=True):  # noqa: C901
     min_msd = -999  # 40
     max_msd = 9999  # 200
 
-    for array in [test_1, test_2, test_3, test_spec, target_test]:
+    for array in [test_2, test_3, test_spec, target_test]:
         array = array[
             (fj_sdmass > min_msd)
             & (fj_sdmass < max_msd)
@@ -111,11 +84,6 @@ def main(args, save_path="", evaluating_test=True):  # noqa: C901
         ]
 
     # Convert two sets into two branch with one set in both and one set in only one (Use for this file)
-    test = test_2
-    test_sv = test_3
-    params = params_2
-    params_sv = params_3
-
     vv_branch = args.vv_branch
     set_onnx = args.set_onnx
 
@@ -127,27 +95,26 @@ def main(args, save_path="", evaluating_test=True):  # noqa: C901
     from models import GraphNet
 
     gnn = GraphNet(
-        N,
-        n_targets,
-        len(params),
-        args.hidden,
-        N_sv,
-        len(params_sv),
+        n_constituents=N,
+        n_targets=n_targets,
+        params=len(params),
+        hidden=args.hidden,
+        n_vertices=N_sv,
+        params_v=len(params_sv),
         vv_branch=int(vv_branch),
         De=args.De,
         Do=args.Do,
-        device=args.device,
+        device=device,
     )
 
-    if set_onnx is False:
-        gnn.load_state_dict(torch.load("../../models/trained_models/gnn_new_best.pth"))
+    if not set_onnx:
+        gnn.load_state_dict(torch.load(f"{project_dir}/models/trained_models/gnn_new_best.pth"))
         print(sum(p.numel() for p in gnn.parameters() if p.requires_grad))
 
         for j in tqdm.tqdm(range(0, target_test.shape[0], batch_size)):
 
             dummy_input_1 = torch.from_numpy(test[j : j + batch_size]).to(device)
             dummy_input_2 = torch.from_numpy(test_sv[j : j + batch_size]).to(device)
-
             out_test = gnn(dummy_input_1, dummy_input_2)
             out_test = out_test.cpu().data.numpy()
             out_test = softmax(out_test, axis=1)
@@ -158,7 +125,7 @@ def main(args, save_path="", evaluating_test=True):  # noqa: C901
             del out_test
 
     else:
-        model_path = "../../models/trained_models/onnx_model/gnn_%s.onnx" % batch_size
+        model_path = f"{project_dir}/models/trained_models/onnx_model/gnn_{batch_size}.onnx"
         onnx_soft_res = []
         for i in tqdm.tqdm(range(0, target_test.shape[0], batch_size)):
             dummy_input_1 = test[i : i + batch_size]
@@ -210,14 +177,17 @@ if __name__ == "__main__":
     """This is executed when run from the command line"""
     parser = argparse.ArgumentParser()
 
-    # Required positional arguments
-    parser.add_argument("outdir", help="Required output directory")
-    parser.add_argument("vv_branch", help="Required positional argument")
     # Optional arguments
-    parser.add_argument("--De", type=int, action="store", dest="De", default=5, help="De")
-    parser.add_argument("--Do", type=int, action="store", dest="Do", default=6, help="Do")
-    parser.add_argument("--hidden", type=int, action="store", dest="hidden", default=15, help="hidden")
-
+    parser.add_argument(
+        "--vv_branch",
+        action="store_true",
+        dest="vv_branch",
+        default=False,
+        help="Consider vertex-vertex interaction in model",
+    )
+    parser.add_argument("--De", type=int, action="store", dest="De", default=20, help="De")
+    parser.add_argument("--Do", type=int, action="store", dest="Do", default=24, help="Do")
+    parser.add_argument("--hidden", type=int, action="store", dest="hidden", default=60, help="hidden")
     parser.add_argument(
         "--batch-size",
         type=int,
@@ -226,7 +196,6 @@ if __name__ == "__main__":
         default=1024,
         help="batch_size",
     )
-
     parser.add_argument(
         "--set_onnx",
         action="store_true",
@@ -234,6 +203,13 @@ if __name__ == "__main__":
         default=False,
         help="set_onnx",
     )
+    parser.add_argument(
+        "--device",
+        action="store",
+        dest="device",
+        default="cpu",
+        help="device to train gnn; follow pytorch convention",
+    )
 
     args = parser.parse_args()
-    main(args, save_path, True)
+    main(args, True)

@@ -99,16 +99,26 @@ def main(definitions, train, test, max_entries, batch_size):  # noqa: C901
                 logger.info(f"creating {h5.filename} h5 file with {real_batch_size} events")
                 feature_data = h5.create_group(f"{dataset}ing_subgroup")
                 target_data = h5.create_group("target_subgroup")
-                # weight_data = h5.create_group("weight_subgroup")
                 spec_data = h5.create_group("spectator_subgroup")
                 for j in range(n_feature_sets):
                     feature_data.create_dataset(
                         f"{dataset}ing_{j}",
-                        data=feature_arrays[f"features_{j}"],
+                        data=feature_arrays[f"features_{j}"].astype("float32"),
                     )
-                target_data.create_dataset("target", data=target_array)
-                # weight_data.create_dataset("weights", data=weight_array)
-                spec_data.create_dataset("spectators", data=spec_array)
+                    np.save(
+                        f"{project_dir}/data/processed/{dataset}/{dataset}_{counter}_features_{j}.npy",
+                        feature_arrays[f"features_{j}"].astype("float32"),
+                    )
+                target_data.create_dataset("target", data=target_array.astype("float32"))
+                np.save(
+                    f"{project_dir}/data/processed/{dataset}/{dataset}_{counter}_truth.npy",
+                    target_array.astype("float32"),
+                )
+                spec_data.create_dataset("spectators", data=spec_array.astype("float32"))
+                np.save(
+                    f"{project_dir}/data/processed/{dataset}/{dataset}_{counter}_spectators.npy",
+                    spec_array.astype("float32"),
+                )
                 h5.close()
             if max_entries and total_entries >= max_entries:
                 done = True

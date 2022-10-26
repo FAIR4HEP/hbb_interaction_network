@@ -41,7 +41,6 @@ class GraphNet(nn.Module):
         if self.vv_branch:
             self.assign_matrices_SVSV()
 
-        self.Ra = torch.ones(self.Dr, self.Nr)
         self.fr1 = nn.Linear(2 * self.P + self.Dr, self.hidden).to(self.device)
         self.fr2 = nn.Linear(self.hidden, int(self.hidden)).to(self.device)
         self.fr3 = nn.Linear(int(self.hidden), self.De).to(self.device)
@@ -152,7 +151,7 @@ class GraphNet(nn.Module):
         del C
 
         if self.vv_branch:
-            # Final output matrix for particles###
+            # Final output matrix for particles
             C = torch.cat([y, Ebar_vv, Ebar_vp], 1)
             del Ebar_vv
             del Ebar_vp
@@ -185,3 +184,83 @@ class GraphNet(nn.Module):
         x_shape = x.size()
         y_shape = y.size()
         return torch.mm(x.reshape(-1, x_shape[2]), y).reshape(-1, x_shape[1], y_shape[1])
+
+
+class GraphNetEmbedding(nn.Module):
+    def __init__(
+        self,
+        n_constituents,
+        n_features,
+        hidden,
+        De=5,
+        Do=6,
+        device="cpu",
+    ):
+        super(GraphNetEmbedding, self).__init__()
+        self.hidden = int(hidden)
+        self.P = n_features
+        self.N = n_constituents
+        self.Nr = self.N * (self.N - 1)
+        self.De = De
+        self.Do = Do
+        self.device = device
+        self.assign_matrices()
+
+        self.fr = nn.Sequential(
+            nn.Linear(2 * self.P, self.hidden),
+            nn.BatchNorm1d(self.hidden),
+            nn.ReLU(),
+            nn.Linear(self.hidden, self.hidden),
+            nn.BatchNorm1d(self.hidden),
+            nn.ReLU(),
+            nn.Linear(self.hidden, self.De),
+            nn.BatchNorm1d(self.De),
+            nn.ReLU(),
+        )
+
+        self.fo = nn.Sequential(
+            nn.Linear(self.P + self.De, self.hidden),
+            nn.BatchNorm1d(self.hidden),
+            nn.ReLU(),
+            nn.Linear(self.hidden, self.hidden),
+            nn.BatchNorm1d(self.hidden),
+            nn.ReLU(),
+            nn.Linear(self.hidden, self.Do),
+            nn.BatchNorm1d(self.Do),
+            nn.ReLU(),
+        )
+
+    def assign_matrices(self):
+        self.Rr = torch.zeros(self.N, self.Nr)
+        self.Rs = torch.zeros(self.N, self.Nr)
+        receiver_sender_list = [i for i in itertools.product(range(self.N), range(self.N)) if i[0] != i[1]]
+        for i, (r, s) in enumerate(receiver_sender_list):
+            self.Rr[r, i] = 1
+            self.Rs[s, i] = 1
+        self.Rr = self.Rr.to(self.device)
+        self.Rs = self.Rs.to(self.device)
+
+    def edge_conv(self, x):
+        Orr = torch.matmul(x, self.Rr)  # [batch, P, Nr]
+        Ors = torch.matmul(x, self.Rs)  # [batch, P, Nr]
+        B = torch.cat([Orr, Ors], dim=-2)  # [batch, 2*P, Nr]
+        B = B.transpose(-1, -2).contiguous()  # [batch, Nr, 2*P]
+        E = self.fr(B.view(-1, 2 * self.P)).view(-1, self.Nr, self.De)  # [batch, Nr, De]
+        E = E.transpose(-1, -2).contiguous()  # [batch, De, Nr]
+        Ebar_pp = torch.einsum("bij,kj->bik", E, self.Rr)  # [batch, De, N]
+        return Ebar_pp
+
+    def forward(self, x):  # [batch, P, N]
+        # pf - pf
+        Ebar_pp = self.edge_conv(x)  # [batch, De, N]
+
+        # Final output matrix
+        C = torch.cat([x, Ebar_pp], dim=-2)  # [batch, P + De, N]
+        C = C.transpose(-1, -2).contiguous()  # [batch, N, P + De]
+        Omatrix = self.fo(C.view(-1, self.P + self.De)).view(-1, self.N, self.Do)  # [batch, N, Do]
+        Omatrix = Omatrix.transpose(-1, -2).contiguous()  # [batch, Do, N]
+
+        # Taking the sum of over each particle/vertex
+        N = torch.sum(Omatrix, dim=-1)  # [batch, Do]
+
+        return N

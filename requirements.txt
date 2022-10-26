@@ -1,6 +1,5 @@
 --extra-index-url https://download.pytorch.org/whl/cpu
 awkward
-awscli
 
 cernopendata-client[pycurl,xrootd]
 
@@ -16,7 +15,6 @@ onnx
 onnxruntime
 python-dotenv>=0.5.1
 scikit-learn
-Sphinx
 sphinx>=3.2.1
 sphinx_rtd_theme
 toposort>=1.5.0

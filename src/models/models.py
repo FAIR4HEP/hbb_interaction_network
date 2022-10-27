@@ -191,13 +191,13 @@ class GraphNetEmbedding(nn.Module):
         self,
         n_constituents,
         n_features,
-        hidden,
+        fr,
+        fo,
         De=5,
         Do=6,
         device="cpu",
     ):
         super(GraphNetEmbedding, self).__init__()
-        self.hidden = int(hidden)
         self.P = n_features
         self.N = n_constituents
         self.Nr = self.N * (self.N - 1)
@@ -205,30 +205,8 @@ class GraphNetEmbedding(nn.Module):
         self.Do = Do
         self.device = device
         self.assign_matrices()
-
-        self.fr = nn.Sequential(
-            nn.Linear(2 * self.P, self.hidden),
-            nn.BatchNorm1d(self.hidden),
-            nn.ReLU(),
-            nn.Linear(self.hidden, self.hidden),
-            nn.BatchNorm1d(self.hidden),
-            nn.ReLU(),
-            nn.Linear(self.hidden, self.De),
-            nn.BatchNorm1d(self.De),
-            nn.ReLU(),
-        )
-
-        self.fo = nn.Sequential(
-            nn.Linear(self.P + self.De, self.hidden),
-            nn.BatchNorm1d(self.hidden),
-            nn.ReLU(),
-            nn.Linear(self.hidden, self.hidden),
-            nn.BatchNorm1d(self.hidden),
-            nn.ReLU(),
-            nn.Linear(self.hidden, self.Do),
-            nn.BatchNorm1d(self.Do),
-            nn.ReLU(),
-        )
+        self.fr = fr
+        self.fo = fo
 
     def assign_matrices(self):
         self.Rr = torch.zeros(self.N, self.Nr)

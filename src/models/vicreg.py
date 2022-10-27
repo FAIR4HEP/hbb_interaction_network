@@ -47,17 +47,24 @@ class VICReg(nn.Module):
             nn.BatchNorm1d(args.transform_inputs),
             nn.ReLU(),
         )
-        self.backbone = args.backbone
+        self.x_backbone = args.x_backbone
+        self.y_backbone = args.y_backbone
+        self.N_x = self.x_backbone.N
+        self.N_y = self.y_backbone.N
         self.embedding = args.Do
         self.projector = Projector(args, self.embedding)
 
     def forward(self, x, y):
-        # x: (batch_size, n_track_features, n_tracks)
-        # y: (batch_size, n_sv_features, n_sv)
-        x = self.x_transform(torch.transpose(x, 1, 2)).transpose(1, 2)
-        y = self.y_transform(torch.transpose(y, 1, 2)).transpose(1, 2)
-        x = self.projector(self.backbone(x))
-        y = self.projector(self.backbone(y))
+        # x: [batch, x_inputs, N_x]
+        # y: (batch, y_inputs, N_y]
+        x = x.transpose(-1, -2).contiguous()  # [batch, N_x, x_inputs]
+        y = y.transpose(-1, -2).contiguous()  # [batch, N_y, y_inputs]
+        x = self.x_transform(x.view(-1, self.args.x_inputs)).view(-1, self.N_x, self.args.transform_inputs)  # [batch, N_x, transform_inputs]
+        y = self.y_transform(y.view(-1, self.args.y_inputs)).view(-1, self.N_y, self.args.transform_inputs)  # [batch, N_y, transform_inputs]
+        x = x.transpose(-1, -2).contiguous()  # [batch, x_inputs, N_x]
+        y = y.transpose(-1, -2).contiguous()  # [batch, y_inputs, N_y]
+        x = self.projector(self.x_backbone(x))
+        y = self.projector(self.y_backbone(y))
 
         repr_loss = F.mse_loss(x, y)
 
@@ -131,10 +138,43 @@ def main(args):
 
     args.x_inputs = len(params)
     args.y_inputs = len(params_sv)
-    args.backbone = GraphNetEmbedding(
+
+    fr = nn.Sequential(
+        nn.Linear(2 * args.transform_inputs, args.hidden),
+        nn.BatchNorm1d(args.hidden),
+        nn.ReLU(),
+        nn.Linear(args.hidden, args.hidden),
+        nn.BatchNorm1d(args.hidden),
+        nn.ReLU(),
+        nn.Linear(args.hidden, args.De),
+        nn.BatchNorm1d(args.De),
+        nn.ReLU(),
+    )
+    fo = nn.Sequential(
+        nn.Linear(args.transform_inputs + args.De, args.hidden),
+        nn.BatchNorm1d(args.hidden),
+        nn.ReLU(),
+        nn.Linear(args.hidden, args.hidden),
+        nn.BatchNorm1d(args.hidden),
+        nn.ReLU(),
+        nn.Linear(args.hidden, args.Do),
+        nn.BatchNorm1d(args.Do),
+        nn.ReLU(),
+    )
+    args.x_backbone = GraphNetEmbedding(
         n_constituents=N,
         n_features=args.transform_inputs,
-        hidden=args.hidden,
+        fr=fr,
+        fo=fo,
+        De=args.De,
+        Do=args.Do,
+        device=args.device,
+    )
+    args.y_backbone = GraphNetEmbedding(
+        n_constituents=N_sv,
+        n_features=args.transform_inputs,
+        fr=fr,
+        fo=fo,
         De=args.De,
         Do=args.Do,
         device=args.device,
@@ -179,9 +219,9 @@ if __name__ == "__main__":
         default=64,
         help="transform_inputs",
     )
-    parser.add_argument("--De", type=int, action="store", dest="De", default=128, help="De")
-    parser.add_argument("--Do", type=int, action="store", dest="Do", default=256, help="Do")
-    parser.add_argument("--hidden", type=int, action="store", dest="hidden", default=256, help="hidden")
+    parser.add_argument("--De", type=int, action="store", dest="De", default=20, help="De")
+    parser.add_argument("--Do", type=int, action="store", dest="Do", default=24, help="Do")
+    parser.add_argument("--hidden", type=int, action="store", dest="hidden", default=60, help="hidden")
     parser.add_argument("--epoch", type=int, action="store", dest="epoch", default=100, help="Epochs")
     parser.add_argument(
         "--label",
@@ -203,12 +243,12 @@ if __name__ == "__main__":
         "--device",
         action="store",
         dest="device",
-        default="cpu",
+        default="cuda",
         help="device to train gnn; follow pytorch convention",
     )
     parser.add_argument(
         "--mlp",
-        default="1024-1024-1024",
+        default="512-512-512",
         help="Size and number of layers of the MLP expander head",
     )
     parser.add_argument(

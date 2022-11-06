@@ -59,8 +59,12 @@ class VICReg(nn.Module):
         # y: (batch, y_inputs, N_y]
         x = x.transpose(-1, -2).contiguous()  # [batch, N_x, x_inputs]
         y = y.transpose(-1, -2).contiguous()  # [batch, N_y, y_inputs]
-        x = self.x_transform(x.view(-1, self.args.x_inputs)).view(-1, self.N_x, self.args.transform_inputs)  # [batch, N_x, transform_inputs]
-        y = self.y_transform(y.view(-1, self.args.y_inputs)).view(-1, self.N_y, self.args.transform_inputs)  # [batch, N_y, transform_inputs]
+        x = self.x_transform(x.view(-1, self.args.x_inputs)).view(
+            -1, self.N_x, self.args.transform_inputs
+        )  # [batch, N_x, transform_inputs]
+        y = self.y_transform(y.view(-1, self.args.y_inputs)).view(
+            -1, self.N_y, self.args.transform_inputs
+        )  # [batch, N_y, transform_inputs]
         x = x.transpose(-1, -2).contiguous()  # [batch, x_inputs, N_x]
         y = y.transpose(-1, -2).contiguous()  # [batch, y_inputs, N_y]
         x = self.projector(self.x_backbone(x))
@@ -107,10 +111,10 @@ def main(args):
 
     files = glob.glob(os.path.join(train_path, "newdata_*.h5"))
     # take first 10% of files for validation
-    # n_val should be 5 for full dataset
-    n_val = max(1, int(0.1 * len(files)))
-    files_val = files[:n_val]
-    files_train = files[n_val:]
+    # n_files_val should be 5 for full dataset
+    n_files_val = max(1, int(0.1 * len(files)))
+    files_val = files[:n_files_val]
+    files_train = files[n_files_val:]
 
     n_epochs = args.epoch
     batch_size = args.batch_size
@@ -135,6 +139,7 @@ def main(args):
     data_val.set_file_names(files_val)
 
     n_train = data_train.count_data()
+    n_val = data_val.count_data()
 
     args.x_inputs = len(params)
     args.y_inputs = len(params_sv)
@@ -182,21 +187,39 @@ def main(args):
 
     model = VICReg(args).to(args.device)
 
-    iterator = data_train.generate_data()
-    total_ = int(n_train / batch_size)
+    train_its = int(n_train / batch_size)
+    val_its = int(n_val / batch_size)
 
     optimizer = optim.Adam(model.parameters(), lr=0.0001)
+    loss_val = []
+    loss_train = []
     for m in range(n_epochs):
         print(f"Epoch {m}\n")
-        for element in tqdm.tqdm(iterator, total=total_):
+        train_iterator = data_train.generate_data()
+        model.train()
+        pbar = tqdm.tqdm(train_iterator, total=train_its)
+        for element in pbar:
             (sub_X, _, _) = element
-            x = torch.FloatTensor(sub_X[2]).to(args.device)
-            y = torch.FloatTensor(sub_X[3]).to(args.device)
+            x = torch.tensor(sub_X[2], dtype=torch.float, device=args.device)
+            y = torch.tensor(sub_X[3], dtype=torch.float, device=args.device)
 
             optimizer.zero_grad()
             loss = model.forward(x, y)
             loss.backward()
             optimizer.step()
+            loss_train.append(loss.item())
+            pbar.set_description(f"Training loss: {loss.item():.4f}")
+
+        model.eval()
+        val_iterator = data_val.generate_data()
+        pbar = tqdm.tqdm(val_iterator, total=val_its)
+        for element in pbar:
+            (sub_X, _, _) = element
+            x = torch.tensor(sub_X[2], dtype=torch.float, device=args.device)
+            y = torch.tensor(sub_X[3], dtype=torch.float, device=args.device)
+            loss = model.forward(x, y)
+            loss_val.append(loss.item())
+            pbar.set_description(f"Validation loss: {loss.item():.4f}")
 
 
 if __name__ == "__main__":

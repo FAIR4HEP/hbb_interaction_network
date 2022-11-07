@@ -12,13 +12,13 @@ Checkout the prebuilt Docker containers.
 
 .. code-block:: bash
 
-   docker pull jmduarte/hbb_interaction_network/cpu:latest
+   docker pull jmduarte/hbb_interaction_network:gpu
 
-* If you use a GPU for training:
+* If you use a CPU for training:
 
 .. code-block:: bash
 
-   docker pull jmduarte/hbb_interaction_network/gpu:latest
+   docker pull jmduarte/hbb_interaction_network:cpu
 
 Or rebuild the images from the Dockerfiles accordingly.
 

@@ -11,5 +11,4 @@ Requirements
 Downloading data based on DOI
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-
 * `make download_data` will use `cernopendata-client` to download the data from the CERN Open Data Portal.

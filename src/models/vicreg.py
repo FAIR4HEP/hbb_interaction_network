@@ -3,6 +3,7 @@ import glob
 import os
 from pathlib import Path
 
+import numpy as np
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
@@ -193,8 +194,10 @@ def main(args):
     optimizer = optim.Adam(model.parameters(), lr=0.0001)
     loss_val = []
     loss_train = []
+    l_val_best = 999999
     for m in range(n_epochs):
         print(f"Epoch {m}\n")
+        loss_val_epoch = []
         train_iterator = data_train.generate_data()
         model.train()
         pbar = tqdm.tqdm(train_iterator, total=train_its)
@@ -202,14 +205,12 @@ def main(args):
             (sub_X, _, _) = element
             x = torch.tensor(sub_X[2], dtype=torch.float, device=args.device)
             y = torch.tensor(sub_X[3], dtype=torch.float, device=args.device)
-
             optimizer.zero_grad()
             loss = model.forward(x, y)
             loss.backward()
             optimizer.step()
             loss_train.append(loss.item())
             pbar.set_description(f"Training loss: {loss.item():.4f}")
-
         model.eval()
         val_iterator = data_val.generate_data()
         pbar = tqdm.tqdm(val_iterator, total=val_its)
@@ -219,7 +220,23 @@ def main(args):
             y = torch.tensor(sub_X[3], dtype=torch.float, device=args.device)
             loss = model.forward(x, y)
             loss_val.append(loss.item())
+            loss_val_epoch.append(loss.item())
             pbar.set_description(f"Validation loss: {loss.item():.4f}")
+
+        l_val = np.mean(np.array(loss_val_epoch))
+        if l_val < l_val_best:
+            print("New best model")
+            l_val_best = l_val
+            torch.save(model.state_dict(), "vicreg_best.pth")
+        torch.save(model.state_dict(), "vicreg_last.pth")
+        np.save(
+            "vicreg_loss_train.npy",
+            np.array(loss_train),
+        )
+        np.save(
+            "vicreg_loss_val.npy",
+            np.array(loss_val),
+        )
 
 
 if __name__ == "__main__":

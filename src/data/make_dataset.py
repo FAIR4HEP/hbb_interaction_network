@@ -19,10 +19,16 @@ def to_np_array(ak_array, maxN=100, pad=0, dtype=float):
 
 
 @click.command()
-@click.argument("definitions", type=click.Path(exists=True), default=f"{project_dir}/src/data/definitions.yml")
+@click.argument(
+    "definitions",
+    type=click.Path(exists=True),
+    default=f"{project_dir}/src/data/definitions.yml",
+)
 @click.option("--train", is_flag=True, show_default=True, default=False)
 @click.option("--test", is_flag=True, show_default=True, default=False)
-def main(definitions, train, test):
+@click.option("--max-entries", show_default=True, default=None, type=int)
+@click.option("--batch-size", show_default=True, default=None, type=int)
+def main(definitions, train, test, max_entries, batch_size):  # noqa: C901
     """Runs data processing scripts to turn raw data from (../raw) into
     cleaned data ready to be analyzed (saved in ../processed).
     """
@@ -37,7 +43,8 @@ def main(definitions, train, test):
     spectators = defn["spectators"]
     labels = defn["labels"]
     n_feature_sets = defn["n_feature_sets"]
-    batch_size = defn["batch_size"]
+    if not batch_size:
+        batch_size = defn["batch_size"]
     if train:
         dataset = "train"
     elif test:
@@ -47,6 +54,8 @@ def main(definitions, train, test):
     files = defn[f"{dataset}_files"]
 
     counter = -1
+    total_entries = 0
+    done = False
     for input_file in files:
         in_file = uproot.open(input_file)
         tree = in_file[defn["tree_name"]]
@@ -60,6 +69,7 @@ def main(definitions, train, test):
             arrays = tree.arrays(spectators, library="np", entry_start=k, entry_stop=k + batch_size)
             spec_array = np.expand_dims(np.stack([arrays[spec] for spec in spectators], axis=1), axis=1)
             real_batch_size = spec_array.shape[0]
+            total_entries += real_batch_size
 
             feature_arrays = {}
             for j in range(n_feature_sets):
@@ -89,17 +99,32 @@ def main(definitions, train, test):
                 logger.info(f"creating {h5.filename} h5 file with {real_batch_size} events")
                 feature_data = h5.create_group(f"{dataset}ing_subgroup")
                 target_data = h5.create_group("target_subgroup")
-                # weight_data = h5.create_group("weight_subgroup")
                 spec_data = h5.create_group("spectator_subgroup")
                 for j in range(n_feature_sets):
                     feature_data.create_dataset(
                         f"{dataset}ing_{j}",
-                        data=feature_arrays[f"features_{j}"],
+                        data=feature_arrays[f"features_{j}"].astype("float32"),
                     )
-                target_data.create_dataset("target", data=target_array)
-                # weight_data.create_dataset("weights", data=weight_array)
-                spec_data.create_dataset("spectators", data=spec_array)
+                    np.save(
+                        f"{project_dir}/data/processed/{dataset}/{dataset}_{counter}_features_{j}.npy",
+                        feature_arrays[f"features_{j}"].astype("float32"),
+                    )
+                target_data.create_dataset("target", data=target_array.astype("float32"))
+                np.save(
+                    f"{project_dir}/data/processed/{dataset}/{dataset}_{counter}_truth.npy",
+                    target_array.astype("float32"),
+                )
+                spec_data.create_dataset("spectators", data=spec_array.astype("float32"))
+                np.save(
+                    f"{project_dir}/data/processed/{dataset}/{dataset}_{counter}_spectators.npy",
+                    spec_array.astype("float32"),
+                )
                 h5.close()
+            if max_entries and total_entries >= max_entries:
+                done = True
+                break
+        if done:
+            break
 
 
 if __name__ == "__main__":

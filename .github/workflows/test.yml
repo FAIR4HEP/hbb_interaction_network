@@ -1,0 +1,41 @@
+name: Test
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.9]
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          sudo apt install -y libcurl4-openssl-dev libssl-dev
+          python -m pip install -U pip setuptools wheel
+          pip install -r requirements.txt
+          pip install -e .
+      - name: Make train dataset
+        run: |
+          python src/data/make_dataset.py --train --max-entries 20000 --batch-size 10000
+      - name: Make test dataset
+        run: |
+          python src/data/make_dataset.py --test --max-entries 20000 --batch-size 10000
+      - name: Train model
+        run: |
+          python src/models/train_model.py --batch-size 1024 --epoch 2
+      - name: Predict model
+        run: |
+          python src/models/predict_model.py --batch-size 1024

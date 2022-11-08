@@ -20,11 +20,6 @@ import yaml
 from src.data.h5data import H5Data
 from src.models.models import GraphNet
 
-# import sys
-# sys.path.append("..")
-# from data.h5data import H5Data     # noqa: E402
-# from models import GraphNet  # noqa: E402
-
 os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 
 project_dir = Path(__file__).resolve().parents[2]
@@ -42,14 +37,36 @@ params_sv = defn["features_3"]
 
 
 def main(args):  # noqa: C901
-    """Main entry point of the app"""
+    """Training function that takes a collection of arguments.
+
+    Attributes:
+      args.outdir: Output directory for trained models
+      args.npy_indir: intput directory for data
+      args.vv_branch: consider vertex-vertex interaction in model
+      args.De: The dimension of particle-vertex and particle-particle latent space
+      args.Do: The dimenstion of pre-aggregate latent space representation
+      args.hidden: Number of nodes in hidden layers of MLP
+      args.drop_rate: drop-rate for signal (Hbb jet) data to train on a dataset with skewed statistics
+      args.epoch: Number of Epochs
+      args.drop_pfeatures: comma separated indices of the particle candidate features to be dropped
+      args.drop_svfeatures: comma separated indices of the secondary vertex features to be dropped
+      args.label: a label for the model to be used as a suffix for saving model and its metadata
+      args.batch_size: batch_size
+      args.load_def: Load weights from default model (default: `{project_dir}/models/trained_models/gnn_baseline_best.pth`)
+      args.random_split: randomly split train test data if enabled
+      args.device: device to train gnn; follow pytorch convention
+
+    """
     model_dict = {}
 
     device = args.device
 
     files = glob.glob(os.path.join(train_path, "newdata_*.h5"))
-    files_val = files[:5]  # take first 5 for validation
-    files_train = files[5:]  # take rest for training
+    # take first 10% of files for validation
+    # n_val should be 5 for full dataset
+    n_val = max(1, int(0.1 * len(files)))
+    files_val = files[:n_val]
+    files_train = files[n_val:]
 
     outdir = args.outdir
     vv_branch = args.vv_branch
@@ -174,7 +191,7 @@ def main(args):  # noqa: C901
     """
 
     if load_def:
-        if os.path.exists("../../models/trained_models/gnn_baseline_best.pth"):
+        if os.path.exists(f"{project_dir}/models/trained_models/gnn_baseline_best.pth"):
             defmodel_exists = True
         else:
             defmodel_exists = False
@@ -183,7 +200,7 @@ def main(args):  # noqa: C901
             load_def = False
 
     if load_def:
-        def_state_dict = torch.load("../../models/trained_models/gnn_baseline_best.pth")
+        def_state_dict = torch.load(f"{project_dir}/models/trained_models/gnn_baseline_best.pth")
         new_state_dict = gnn.state_dict()
         for key in def_state_dict.keys():
             if key not in ["fr1_pv.weight", "fr1.weight", "fo1.weight"]:
@@ -266,7 +283,12 @@ def main(args):  # noqa: C901
             total_ = int(n_train / batch_size)
         else:
             batch_num_tr = int(len(t_X_tr[1]) / batch_size)
-            print("batch num, X_tr_1, batch_size: ", batch_num_tr, len(t_X_tr[1]), batch_size)
+            print(
+                "batch num, X_tr_1, batch_size: ",
+                batch_num_tr,
+                len(t_X_tr[1]),
+                batch_size,
+            )
             iterator = range(batch_num_tr)
             total_ = batch_num_tr
 
@@ -338,7 +360,12 @@ def main(args):  # noqa: C901
             total_ = int(n_val / batch_size)
         else:
             batch_num_te = int(len(t_X_te[1]) / batch_size)
-            print("batch num, X_te_1, batch_size: ", batch_num_te, len(t_X_te[1]), batch_size)
+            print(
+                "batch num, X_te_1, batch_size: ",
+                batch_num_te,
+                len(t_X_te[1]),
+                batch_size,
+            )
             iterator = range(batch_num_te)
             total_ = batch_num_te
 
@@ -450,7 +477,7 @@ if __name__ == "__main__":
         type=str,
         action="store",
         dest="outdir",
-        default="../../models/",
+        default=f"{project_dir}/models/",
         help="Output directory",
     )
     parser.add_argument(
@@ -510,7 +537,7 @@ if __name__ == "__main__":
         type=int,
         action="store",
         dest="batch_size",
-        default=128,
+        default=1024,
         help="batch_size",
     )
     parser.add_argument(
@@ -528,7 +555,11 @@ if __name__ == "__main__":
         help="randomly split train test data if enabled",
     )
     parser.add_argument(
-        "--device", action="store", dest="device", default="cpu", help="device to train gnn; follow pytorch convention"
+        "--device",
+        action="store",
+        dest="device",
+        default="cpu",
+        help="device to train gnn; follow pytorch convention",
     )
 
     args = parser.parse_args()

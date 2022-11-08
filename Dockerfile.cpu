@@ -19,9 +19,9 @@ ENV PATH /opt/xrootd/bin:${PATH}
 ENV LD_LIBRARY_PATH /opt/xrootd/lib
 
 USER $NB_USER
-WORKDIR /home/$NB_USER/hbb_interaction_network
+WORKDIR /home/$NB_USER
 RUN mamba install xrootd
-COPY . .
+COPY requirements.txt .
 RUN pip install -r requirements.txt
 
 USER root

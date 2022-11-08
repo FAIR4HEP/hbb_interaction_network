@@ -7,6 +7,7 @@ message: >-
   If you use this software, please cite it using the
   metadata from this file.
 type: software
+license: MIT
 authors:
   - given-names: Javier Mauricio
     family-names: Duarte
@@ -26,3 +27,8 @@ authors:
     family-names: Zhu
     email: ruikez2@illinois.edu
     affiliation: University of Illinois Urbana-Champaign
+doi: 10.5281/zenodo.7305173
+repository-code: https://github.com/FAIR4HEP/hbb_interaction_network
+url: https://fair4hep.github.io/hbb_interaction_network
+abstract: |
+  A FAIR AI model for identifying Higgs bosons decaying to bottom quarks.

@@ -1,4 +1,4 @@
-name: build-and-push
+name: build-and-push-cpu
 
 on:
   workflow_dispatch:
@@ -30,6 +30,7 @@ jobs:
         with:
           context: .
           platforms: linux/amd64
+          file: Dockerfile.cpu
           push: true
           tags: |
-            jmduarte/hbb_interaction_network:latest
+            jmduarte/hbb_interaction_network:cpu

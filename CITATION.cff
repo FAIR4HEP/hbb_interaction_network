@@ -23,10 +23,12 @@ authors:
     family-names: Roy
     affiliation: National Center for Supercomputing Applications
     email: avroy@illinois.edu
+    orcid: 'https://orcid.org/0000-0002-0116-1012'
   - given-names: Ruike
     family-names: Zhu
     email: ruikez2@illinois.edu
     affiliation: University of Illinois Urbana-Champaign
+    orcid: 'https://orcid.org/0000-0002-4265-2352'
 doi: 10.5281/zenodo.7305173
 repository-code: https://github.com/FAIR4HEP/hbb_interaction_network
 url: https://fair4hep.github.io/hbb_interaction_network

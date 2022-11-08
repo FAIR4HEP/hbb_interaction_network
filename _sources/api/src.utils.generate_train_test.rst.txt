@@ -1,0 +1,7 @@
+src.utils.generate\_train\_test \(module\)
+==========================================
+
+.. automodule:: src.utils.generate_train_test
+   :members:
+   :undoc-members:
+   :show-inheritance:

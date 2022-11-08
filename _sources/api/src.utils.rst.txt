@@ -1,0 +1,21 @@
+src.utils \(package\)
+=====================
+
+Submodules:
+
+
+.. toctree::
+   :maxdepth: 2
+
+   src.utils.engine
+   src.utils.generate_train_test
+   src.utils.predict_model_tensorrt
+   src.utils.pytorch2onnx
+   src.utils.xAITools
+
+Module contents:
+
+.. automodule:: src.utils
+   :members:
+   :undoc-members:
+   :show-inheritance:

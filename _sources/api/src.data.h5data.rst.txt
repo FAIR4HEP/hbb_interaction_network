@@ -1,0 +1,7 @@
+src.data.h5data \(module\)
+==========================
+
+.. automodule:: src.data.h5data
+   :members:
+   :undoc-members:
+   :show-inheritance:

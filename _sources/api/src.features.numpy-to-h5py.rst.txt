@@ -1,0 +1,7 @@
+src.features.numpy\-to\-h5py \(module\)
+=======================================
+
+.. automodule:: src.features.numpy-to-h5py
+   :members:
+   :undoc-members:
+   :show-inheritance:

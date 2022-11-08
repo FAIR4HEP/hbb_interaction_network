@@ -1,0 +1,7 @@
+src.utils.predict\_model\_tensorrt \(module\)
+=============================================
+
+.. automodule:: src.utils.predict_model_tensorrt
+   :members:
+   :undoc-members:
+   :show-inheritance:

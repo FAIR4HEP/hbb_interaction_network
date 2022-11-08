@@ -1,0 +1,7 @@
+src.models.predict\_model \(module\)
+====================================
+
+.. automodule:: src.models.predict_model
+   :members:
+   :undoc-members:
+   :show-inheritance:

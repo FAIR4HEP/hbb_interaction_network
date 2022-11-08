@@ -1,0 +1,19 @@
+src.models \(package\)
+======================
+
+Submodules:
+
+
+.. toctree::
+   :maxdepth: 2
+
+   src.models.models
+   src.models.predict_model
+   src.models.train_model
+
+Module contents:
+
+.. automodule:: src.models
+   :members:
+   :undoc-members:
+   :show-inheritance:

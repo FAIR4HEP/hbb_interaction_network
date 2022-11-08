@@ -1,0 +1,18 @@
+src.features \(package\)
+========================
+
+Submodules:
+
+
+.. toctree::
+   :maxdepth: 2
+
+   src.features.build_features
+   src.features.numpy-to-h5py
+
+Module contents:
+
+.. automodule:: src.features
+   :members:
+   :undoc-members:
+   :show-inheritance:

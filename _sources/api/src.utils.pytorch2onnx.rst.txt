@@ -1,0 +1,7 @@
+src.utils.pytorch2onnx \(module\)
+=================================
+
+.. automodule:: src.utils.pytorch2onnx
+   :members:
+   :undoc-members:
+   :show-inheritance:

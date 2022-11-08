@@ -1,0 +1,20 @@
+src \(package\)
+===============
+
+Subpackages:
+
+.. toctree::
+   :maxdepth: 2
+
+   src.data
+   src.features
+   src.models
+   src.utils
+   src.visualization
+
+Module contents:
+
+.. automodule:: src
+   :members:
+   :undoc-members:
+   :show-inheritance:

@@ -1,0 +1,18 @@
+src.data \(package\)
+====================
+
+Submodules:
+
+
+.. toctree::
+   :maxdepth: 2
+
+   src.data.h5data
+   src.data.make_dataset
+
+Module contents:
+
+.. automodule:: src.data
+   :members:
+   :undoc-members:
+   :show-inheritance:

@@ -308,7 +308,7 @@ if __name__ == "__main__":
         type=float,
         default=1.0,
         help="Covariance regularization loss coefficient",
-    )
+    ) 
 
     args = parser.parse_args()
     main(args)

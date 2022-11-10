@@ -19,7 +19,7 @@ if torch.cuda.is_available():
 
 project_dir = Path(__file__).resolve().parents[2]
 
-train_path = f"{project_dir}/data/processed/train/"
+train_path = "ssl-jet-vol/hbb_interaction_network/data/processed/train/"
 definitions = f"{project_dir}/src/data/definitions.yml"
 with open(definitions) as yaml_file:
     defn = yaml.load(yaml_file, Loader=yaml.FullLoader)

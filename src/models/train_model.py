@@ -96,9 +96,10 @@ def main(args):  # noqa: C901
         print("The following secondary vertex features to be dropped: ", drop_svfeatures)
     n_epochs = args.epoch
     batch_size = args.batch_size
-    model_loc = "{}/trained_models/".format(outdir)
-    model_perf_loc = "{}/model_performances".format(outdir)
-    model_dict_loc = "{}/model_dicts".format(outdir)
+    model_loc = "{}trained_models/".format(outdir)
+    model_perf_loc = "{}model_performances".format(outdir)
+    model_dict_loc = "{}model_dicts".format(outdir)
+    os.system("chmod ugo+rwx {} {} {}".format(model_loc, model_perf_loc, model_dict_loc))
     os.system("mkdir -p {} {} {}".format(model_loc, model_perf_loc, model_dict_loc))
 
     # Saving the model's metadata as a json dict

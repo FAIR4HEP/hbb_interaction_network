@@ -26,9 +26,12 @@ def to_np_array(ak_array, maxN=100, pad=0, dtype=float):
 )
 @click.option("--train", is_flag=True, show_default=True, default=False)
 @click.option("--test", is_flag=True, show_default=True, default=False)
+@click.option("--out-dir", show_default=True, default=f"{project_dir}/data/processed/")
 @click.option("--max-entries", show_default=True, default=None, type=int)
+@click.option("--min-npv", show_default=True, default=-1, type=int)
+@click.option("--max-npv", show_default=True, default=9999, type=int)
 @click.option("--batch-size", show_default=True, default=None, type=int)
-def main(definitions, train, test, max_entries, batch_size):  # noqa: C901
+def main(definitions, train, test, out_dir, max_entries, min_npv, max_npv, batch_size):  # noqa: C901
     """Runs data processing scripts to turn raw data from (../raw) into
     cleaned data ready to be analyzed (saved in ../processed).
     """
@@ -63,11 +66,12 @@ def main(definitions, train, test, max_entries, batch_size):  # noqa: C901
         logger.info(f"opening {input_file} with {nentries} events")
         for k in range(0, nentries, batch_size):
             counter += 1
-            if os.path.isfile(f"{project_dir}/data/processed/{dataset}/newdata_{counter}.h5"):
-                logger.info(f"{project_dir}/data/processed/{dataset}/newdata_{counter}.h5 exists... skipping")
+            if os.path.isfile(f"{out_dir}/{dataset}/newdata_{counter}.h5"):
+                logger.info(f"{out_dir}/{dataset}/newdata_{counter}.h5 exists... skipping")
                 continue
             arrays = tree.arrays(spectators, library="np", entry_start=k, entry_stop=k + batch_size)
-            spec_array = np.expand_dims(np.stack([arrays[spec] for spec in spectators], axis=1), axis=1)
+            mask = (arrays["npv"] >= min_npv) & (arrays["npv"] < max_npv)
+            spec_array = np.expand_dims(np.stack([arrays[spec][mask] for spec in spectators], axis=1), axis=1)
             real_batch_size = spec_array.shape[0]
             total_entries += real_batch_size
 
@@ -84,18 +88,18 @@ def main(definitions, train, test, max_entries, batch_size):  # noqa: C901
                     library="ak",
                 )
                 for i, feature in enumerate(defn[f"features_{j}"]):
-                    feat = to_np_array(arrays[feature], maxN=defn[f"nobj_{j}"])
+                    feat = to_np_array(arrays[feature][mask], maxN=defn[f"nobj_{j}"])
                     feature_arrays[f"features_{j}"][:, :, i] = feat
                 # For PyTorch channels-first style networks
                 feature_arrays[f"features_{j}"] = np.ascontiguousarray(np.swapaxes(feature_arrays[f"features_{j}"], 1, 2))
 
             arrays = tree.arrays(labels, library="np", entry_start=k, entry_stop=k + batch_size)
             target_array = np.zeros((real_batch_size, 2), dtype=float)
-            target_array[:, 0] = arrays["sample_isQCD"] * arrays["fj_isQCD"]
-            target_array[:, 1] = arrays["fj_isH"]
+            target_array[:, 0] = arrays["sample_isQCD"][mask] * arrays["fj_isQCD"][mask]
+            target_array[:, 1] = arrays["fj_isH"][mask]
 
-            os.makedirs(f"{project_dir}/data/processed/{dataset}", exist_ok=True)
-            with h5py.File(f"{project_dir}/data/processed/{dataset}/newdata_{counter}.h5", "w") as h5:
+            os.makedirs(f"{out_dir}/{dataset}", exist_ok=True)
+            with h5py.File(f"{out_dir}/{dataset}/newdata_{counter}.h5", "w") as h5:
                 logger.info(f"creating {h5.filename} h5 file with {real_batch_size} events")
                 feature_data = h5.create_group(f"{dataset}ing_subgroup")
                 target_data = h5.create_group("target_subgroup")
@@ -106,17 +110,17 @@ def main(definitions, train, test, max_entries, batch_size):  # noqa: C901
                         data=feature_arrays[f"features_{j}"].astype("float32"),
                     )
                     np.save(
-                        f"{project_dir}/data/processed/{dataset}/{dataset}_{counter}_features_{j}.npy",
+                        f"{out_dir}/{dataset}/{dataset}_{counter}_features_{j}.npy",
                         feature_arrays[f"features_{j}"].astype("float32"),
                     )
                 target_data.create_dataset("target", data=target_array.astype("float32"))
                 np.save(
-                    f"{project_dir}/data/processed/{dataset}/{dataset}_{counter}_truth.npy",
+                    f"{out_dir}/{dataset}/{dataset}_{counter}_truth.npy",
                     target_array.astype("float32"),
                 )
                 spec_data.create_dataset("spectators", data=spec_array.astype("float32"))
                 np.save(
-                    f"{project_dir}/data/processed/{dataset}/{dataset}_{counter}_spectators.npy",
+                    f"{out_dir}/{dataset}/{dataset}_{counter}_spectators.npy",
                     spec_array.astype("float32"),
                 )
                 h5.close()

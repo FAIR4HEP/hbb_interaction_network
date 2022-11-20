@@ -26,12 +26,12 @@ def to_np_array(ak_array, maxN=100, pad=0, dtype=float):
 )
 @click.option("--train", is_flag=True, show_default=True, default=False)
 @click.option("--test", is_flag=True, show_default=True, default=False)
-@click.option("--out-dir", show_default=True, default=f"{project_dir}/data/processed/")
+@click.option("--outdir", show_default=True, default=f"{project_dir}/data/processed/")
 @click.option("--max-entries", show_default=True, default=None, type=int)
 @click.option("--min-npv", show_default=True, default=-1, type=int)
 @click.option("--max-npv", show_default=True, default=9999, type=int)
 @click.option("--batch-size", show_default=True, default=None, type=int)
-def main(definitions, train, test, out_dir, max_entries, min_npv, max_npv, batch_size):  # noqa: C901
+def main(definitions, train, test, outdir, max_entries, min_npv, max_npv, batch_size):  # noqa: C901
     """Runs data processing scripts to turn raw data from (../raw) into
     cleaned data ready to be analyzed (saved in ../processed).
     """
@@ -66,8 +66,8 @@ def main(definitions, train, test, out_dir, max_entries, min_npv, max_npv, batch
         logger.info(f"opening {input_file} with {nentries} events")
         for k in range(0, nentries, batch_size):
             counter += 1
-            if os.path.isfile(f"{out_dir}/{dataset}/newdata_{counter}.h5"):
-                logger.info(f"{out_dir}/{dataset}/newdata_{counter}.h5 exists... skipping")
+            if os.path.isfile(f"{outdir}/{dataset}/newdata_{counter}.h5"):
+                logger.info(f"{outdir}/{dataset}/newdata_{counter}.h5 exists... skipping")
                 continue
             arrays = tree.arrays(spectators, library="np", entry_start=k, entry_stop=k + batch_size)
             mask = (arrays["npv"] >= min_npv) & (arrays["npv"] < max_npv)
@@ -98,8 +98,8 @@ def main(definitions, train, test, out_dir, max_entries, min_npv, max_npv, batch
             target_array[:, 0] = arrays["sample_isQCD"][mask] * arrays["fj_isQCD"][mask]
             target_array[:, 1] = arrays["fj_isH"][mask]
 
-            os.makedirs(f"{out_dir}/{dataset}", exist_ok=True)
-            with h5py.File(f"{out_dir}/{dataset}/newdata_{counter}.h5", "w") as h5:
+            os.makedirs(f"{outdir}/{dataset}", exist_ok=True)
+            with h5py.File(f"{outdir}/{dataset}/newdata_{counter}.h5", "w") as h5:
                 logger.info(f"creating {h5.filename} h5 file with {real_batch_size} events")
                 feature_data = h5.create_group(f"{dataset}ing_subgroup")
                 target_data = h5.create_group("target_subgroup")
@@ -110,17 +110,17 @@ def main(definitions, train, test, out_dir, max_entries, min_npv, max_npv, batch
                         data=feature_arrays[f"features_{j}"].astype("float32"),
                     )
                     np.save(
-                        f"{out_dir}/{dataset}/{dataset}_{counter}_features_{j}.npy",
+                        f"{outdir}/{dataset}/{dataset}_{counter}_features_{j}.npy",
                         feature_arrays[f"features_{j}"].astype("float32"),
                     )
                 target_data.create_dataset("target", data=target_array.astype("float32"))
                 np.save(
-                    f"{out_dir}/{dataset}/{dataset}_{counter}_truth.npy",
+                    f"{outdir}/{dataset}/{dataset}_{counter}_truth.npy",
                     target_array.astype("float32"),
                 )
                 spec_data.create_dataset("spectators", data=spec_array.astype("float32"))
                 np.save(
-                    f"{out_dir}/{dataset}/{dataset}_{counter}_spectators.npy",
+                    f"{outdir}/{dataset}/{dataset}_{counter}_spectators.npy",
                     spec_array.astype("float32"),
                 )
                 h5.close()

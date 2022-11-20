@@ -1,4 +1,5 @@
 import argparse
+import copy
 import glob
 import os
 from pathlib import Path
@@ -19,7 +20,6 @@ if torch.cuda.is_available():
 
 project_dir = Path(__file__).resolve().parents[2]
 
-train_path = "/ssl-jet-vol/hbb_interaction_network/data/processed/train/"
 definitions = f"{project_dir}/src/data/definitions.yml"
 with open(definitions) as yaml_file:
     defn = yaml.load(yaml_file, Loader=yaml.FullLoader)
@@ -53,6 +53,7 @@ class VICReg(nn.Module):
         self.N_x = self.x_backbone.N
         self.N_y = self.y_backbone.N
         self.embedding = args.Do
+        self.return_embedding = args.return_embedding
         self.projector = Projector(args, self.embedding)
 
     def forward(self, x, y):
@@ -70,6 +71,8 @@ class VICReg(nn.Module):
         y = y.transpose(-1, -2).contiguous()  # [batch, y_inputs, N_y]
         x = self.projector(self.x_backbone(x))
         y = self.projector(self.y_backbone(y))
+        if self.return_embedding:
+            return x, y
 
         repr_loss = F.mse_loss(x, y)
 
@@ -108,9 +111,54 @@ def off_diagonal(x):
     return x.flatten()[:-1].view(n - 1, n + 1)[:, 1:].flatten()
 
 
+def get_backbones(args):
+
+    fr = nn.Sequential(
+        nn.Linear(2 * args.transform_inputs, args.hidden),
+        nn.BatchNorm1d(args.hidden),
+        nn.ReLU(),
+        nn.Linear(args.hidden, args.hidden),
+        nn.BatchNorm1d(args.hidden),
+        nn.ReLU(),
+        nn.Linear(args.hidden, args.De),
+        nn.BatchNorm1d(args.De),
+        nn.ReLU(),
+    )
+    fo = nn.Sequential(
+        nn.Linear(args.transform_inputs + args.De, args.hidden),
+        nn.BatchNorm1d(args.hidden),
+        nn.ReLU(),
+        nn.Linear(args.hidden, args.hidden),
+        nn.BatchNorm1d(args.hidden),
+        nn.ReLU(),
+        nn.Linear(args.hidden, args.Do),
+        nn.BatchNorm1d(args.Do),
+        nn.ReLU(),
+    )
+    x_backbone = GraphNetEmbedding(
+        n_constituents=N,
+        n_features=args.transform_inputs,
+        fr=fr,
+        fo=fo,
+        De=args.De,
+        Do=args.Do,
+        device=args.device,
+    )
+    y_backbone = GraphNetEmbedding(
+        n_constituents=N_sv,
+        n_features=args.transform_inputs,
+        fr=fr if args.shared else copy.deepcopy(fr),
+        fo=fo if args.shared else copy.deepcopy(fo),
+        De=args.De,
+        Do=args.Do,
+        device=args.device,
+    )
+    return x_backbone, y_backbone
+
+
 def main(args):
 
-    files = glob.glob(os.path.join(train_path, "newdata_*.h5"))
+    files = glob.glob(os.path.join(args.train_path, "newdata_*.h5"))
     # take first 10% of files for validation
     # n_files_val should be 5 for full dataset
     n_files_val = max(1, int(0.1 * len(files)))
@@ -145,47 +193,7 @@ def main(args):
     args.x_inputs = len(params)
     args.y_inputs = len(params_sv)
 
-    fr = nn.Sequential(
-        nn.Linear(2 * args.transform_inputs, args.hidden),
-        nn.BatchNorm1d(args.hidden),
-        nn.ReLU(),
-        nn.Linear(args.hidden, args.hidden),
-        nn.BatchNorm1d(args.hidden),
-        nn.ReLU(),
-        nn.Linear(args.hidden, args.De),
-        nn.BatchNorm1d(args.De),
-        nn.ReLU(),
-    )
-    fo = nn.Sequential(
-        nn.Linear(args.transform_inputs + args.De, args.hidden),
-        nn.BatchNorm1d(args.hidden),
-        nn.ReLU(),
-        nn.Linear(args.hidden, args.hidden),
-        nn.BatchNorm1d(args.hidden),
-        nn.ReLU(),
-        nn.Linear(args.hidden, args.Do),
-        nn.BatchNorm1d(args.Do),
-        nn.ReLU(),
-    )
-    args.x_backbone = GraphNetEmbedding(
-        n_constituents=N,
-        n_features=args.transform_inputs,
-        fr=fr,
-        fo=fo,
-        De=args.De,
-        Do=args.Do,
-        device=args.device,
-    )
-    args.y_backbone = GraphNetEmbedding(
-        n_constituents=N_sv,
-        n_features=args.transform_inputs,
-        fr=fr,
-        fo=fo,
-        De=args.De,
-        Do=args.Do,
-        device=args.device,
-    )
-
+    args.x_backbone, args.y_backbone = get_backbones(args)
     model = VICReg(args).to(args.device)
 
     train_its = int(n_train / batch_size)
@@ -244,6 +252,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
+        "--train-path",
+        type=str,
+        action="store",
+        default=f"{project_dir}/data/processed/train/",
+        help="Input directory with training files",
+    )
+    parser.add_argument(
         "--outdir",
         type=str,
         action="store",
@@ -262,6 +277,11 @@ if __name__ == "__main__":
     parser.add_argument("--De", type=int, action="store", dest="De", default=20, help="De")
     parser.add_argument("--Do", type=int, action="store", dest="Do", default=24, help="Do")
     parser.add_argument("--hidden", type=int, action="store", dest="hidden", default=60, help="hidden")
+    parser.add_argument(
+        "--shared",
+        action="store_true",
+        help="share parameters of backbone",
+    )
     parser.add_argument("--epoch", type=int, action="store", dest="epoch", default=100, help="Epochs")
     parser.add_argument(
         "--label",
@@ -308,7 +328,7 @@ if __name__ == "__main__":
         type=float,
         default=1.0,
         help="Covariance regularization loss coefficient",
-    ) 
+    )
 
     args = parser.parse_args()
     main(args)

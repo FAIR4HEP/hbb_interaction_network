@@ -1,11 +1,11 @@
 tree_name: "deepntuplizer/tree"
 n_feature_sets: 4
 batch_size: 100000
-# zero-pad up to 1 jet, 100 pf cands, 60 tracks, 5 svs
+# zero-pad up to 1 jet, 100 pf cands, 60 tracks, 7 svs
 nobj_0: 1
 nobj_1: 100
 nobj_2: 60
-nobj_3: 5
+nobj_3: 7
 
 train_files:
   - root://eospublic.cern.ch//eos/opendata/cms/datascience/HiggsToBBNtupleProducerTool/HiggsToBBNTuple_HiggsToBB_QCD_RunII_13TeV_MC/train/ntuple_merged_45.root

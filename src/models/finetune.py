@@ -96,13 +96,13 @@ def main(args):  # noqa: C901
     print("val data:", n_val)
     print("train data:", n_train)
 
-    if args.load_vireg_path:
+    if args.load_vicreg_path:
         args.x_inputs = len(params)
         args.y_inputs = len(params_sv)
         args.x_backbone, args.y_backbone = get_backbones(args)
         args.return_embedding = True
         model = VICReg(args).to(args.device)
-        model.load_state_dict(torch.load(args.load_vireg_path))
+        model.load_state_dict(torch.load(args.load_vicreg_path))
         model.eval()
         projector = Projector(args.finetune_mlp, 2 * args.Do)
     else:

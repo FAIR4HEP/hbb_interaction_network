@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: hbb-job-train-
+  name: hbb-job-vicreg
   labels:
     jobgroup: hbb-job
 spec:
@@ -18,7 +18,7 @@ spec:
             git checkout vicreg &&
             git pull &&
             pip install -e . &&
-            python -m src.models.vicreg --batch-size 1024 --epoch 200  --label min_npv_15 --train-path /ssl-jet-vol/hbb_interaction_network/data/processed/min_npv_15/train/ --mlp 256-256-256
+            python -m src.models.vicreg --batch-size 1024 --epoch 200  --label min_npv_15 --train-path /ssl-jet-vol/hbb_interaction_network/data/processed/min_npv_15/train/
         volumeMounts:
         - mountPath: /ssl-jet-vol
           name: ssl-jet-vol

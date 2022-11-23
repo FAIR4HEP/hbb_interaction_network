@@ -104,7 +104,7 @@ def main(args):  # noqa: C901
         model = VICReg(args).to(args.device)
         model.load_state_dict(torch.load(args.load_vicreg_path))
         model.eval()
-        projector = Projector(args.finetune_mlp, 2 * args.Do)
+        projector = Projector(args.finetune_mlp, 2 * args.Do).to(args.device)
         optimizer = optim.Adam(projector.parameters(), lr=0.0001)
     else:
         if just_svs:

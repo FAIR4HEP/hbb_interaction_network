@@ -104,7 +104,7 @@ def main(args):  # noqa: C901
         model = VICReg(args).to(args.device)
         model.load_state_dict(torch.load(args.load_vicreg_path))
         model.eval()
-        projector = Projector(args.finetune_mlp, 2 * args.Do).to(args.device)
+        projector = Projector(args.finetune_mlp, 2 * model.num_features).to(args.device)
         optimizer = optim.Adam(projector.parameters(), lr=0.0001)
     else:
         if just_svs:
@@ -297,7 +297,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--finetune-mlp",
-        default="256-256-2",
+        default="512-512-2",
         help="Size and number of layers of the MLP finetuning head",
     )
     parser.add_argument(

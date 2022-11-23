@@ -19,6 +19,7 @@ import yaml
 
 from src.data.h5data import H5Data
 from src.models.models import GraphNet, GraphNetSingle
+from src.models.vicreg import Projector, VICReg, get_backbones
 
 os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 
@@ -95,38 +96,48 @@ def main(args):  # noqa: C901
     print("val data:", n_val)
     print("train data:", n_train)
 
-    if just_svs:
-        gnn = GraphNetSingle(
-            n_constituents=N_sv,
-            n_targets=n_targets,
-            params=len(params_sv),
-            hidden=args.hidden,
-            De=args.De,
-            Do=args.Do,
-            device=device,
-        )
-    elif just_tracks:
-        gnn = GraphNetSingle(
-            n_constituents=N,
-            n_targets=n_targets,
-            params=len(params),
-            hidden=args.hidden,
-            De=args.De,
-            Do=args.Do,
-            device=device,
-        )
+    if args.load_vireg_path:
+        args.x_inputs = len(params)
+        args.y_inputs = len(params_sv)
+        args.x_backbone, args.y_backbone = get_backbones(args)
+        args.return_embedding = True
+        model = VICReg(args).to(args.device)
+        model.load_state_dict(torch.load(args.load_vireg_path))
+        model.eval()
+        projector = Projector(args.finetune_mlp, 2 * args.Do)
     else:
-        gnn = GraphNet(
-            n_constituents=N,
-            n_targets=n_targets,
-            params=len(params),
-            hidden=args.hidden,
-            n_vertices=N_sv,
-            params_v=len(params_sv),
-            De=args.De,
-            Do=args.Do,
-            device=device,
-        )
+        if just_svs:
+            gnn = GraphNetSingle(
+                n_constituents=N_sv,
+                n_targets=n_targets,
+                params=len(params_sv),
+                hidden=args.hidden,
+                De=args.De,
+                Do=args.Do,
+                device=device,
+            )
+        elif just_tracks:
+            gnn = GraphNetSingle(
+                n_constituents=N,
+                n_targets=n_targets,
+                params=len(params),
+                hidden=args.hidden,
+                De=args.De,
+                Do=args.Do,
+                device=device,
+            )
+        else:
+            gnn = GraphNet(
+                n_constituents=N,
+                n_targets=n_targets,
+                params=len(params),
+                hidden=args.hidden,
+                n_vertices=N_sv,
+                params_v=len(params_sv),
+                De=args.De,
+                Do=args.Do,
+                device=device,
+            )
 
     loss = nn.CrossEntropyLoss(reduction="mean")
     optimizer = optim.Adam(gnn.parameters(), lr=0.0001)
@@ -158,7 +169,8 @@ def main(args):  # noqa: C901
         iterator = data_train.generate_data()
         total_ = int(n_train / batch_size)
 
-        for element in tqdm.tqdm(iterator, total=total_):
+        pbar = tqdm.tqdm(iterator, total=total_)
+        for element in pbar:
             (sub_X, sub_Y, _) = element
             training = sub_X[2]
             training_sv = sub_X[3]
@@ -168,17 +180,23 @@ def main(args):  # noqa: C901
             trainingv_sv = (torch.FloatTensor(training_sv)).to(device)
             targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).to(device)
             optimizer.zero_grad()
-            if just_svs:
-                out = gnn(trainingv_sv.to(device))
-            elif just_tracks:
-                out = gnn(trainingv.to(device))
+            if args.load_vicreg_path:
+                projector.train()
+                embedding = model(torch.cat((trainingv, trainingv_sv), dim=-1))
+                out = projector(embedding)
             else:
-                out = gnn(trainingv.to(device), trainingv_sv.to(device))
-            batch_loss = loss(out, targetv.to(device))
+                gnn.train()
+                if just_svs:
+                    out = gnn(trainingv_sv)
+                elif just_tracks:
+                    out = gnn(trainingv)
+                else:
+                    out = gnn(trainingv, trainingv_sv)
+            batch_loss = loss(out, targetv)
             loss_training.append(batch_loss.item())
+            pbar.set_description(f"Training loss: {batch_loss.item():.4f}")
             batch_loss.backward()
             optimizer.step()
-            del trainingv, trainingv_sv, targetv
 
         toc = time.perf_counter()
         print(f"Training done in {toc - tic:0.4f} seconds")
@@ -187,8 +205,8 @@ def main(args):  # noqa: C901
         # validate process
         iterator = data_val.generate_data()
         total_ = int(n_val / batch_size)
-
-        for element in tqdm.tqdm(iterator, total=total_):
+        pbar = tqdm.tqdm(iterator, total=total_)
+        for element in pbar:
             (sub_X, sub_Y, _) = element
             training = sub_X[2]
             training_sv = sub_X[3]
@@ -197,18 +215,23 @@ def main(args):  # noqa: C901
             trainingv = (torch.FloatTensor(training)).to(device)
             trainingv_sv = (torch.FloatTensor(training_sv)).to(device)
             targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).to(device)
-            if just_svs:
-                out = gnn(trainingv_sv.to(device))
-            elif just_tracks:
-                out = gnn(trainingv.to(device))
+            if args.load_vicreg_path:
+                projector.eval()
+                embedding = model(torch.cat((trainingv, trainingv_sv), dim=-1))
+                out = projector(embedding)
             else:
-                out = gnn(trainingv.to(device), trainingv_sv.to(device))
+                gnn.eval()
+                if just_svs:
+                    out = gnn(trainingv_sv)
+                elif just_tracks:
+                    out = gnn(trainingv)
+                else:
+                    out = gnn(trainingv, trainingv_sv)
             lst.append(softmax(out).cpu().data.numpy())
-            l_val = loss(out, targetv.to(device))
+            l_val = loss(out, targetv)
             loss_val.append(l_val.item())
-
+            pbar.set_description(f"Validation loss: {l_val.item():.4f}")
             correct.append(target)
-            del trainingv, trainingv_sv, targetv
         toc = time.perf_counter()
         print(f"Evaluation done in {toc - tic:0.4f} seconds")
         l_val = np.mean(np.array(loss_val))
@@ -220,11 +243,17 @@ def main(args):  # noqa: C901
         print("Training Loss: ", l_training)
         val_targetv = np.concatenate(correct)
 
-        torch.save(gnn.state_dict(), "%s/gnn_%s_last.pth" % (model_loc, label))
+        if args.load_vicreg_path:
+            torch.save(projector.state_dict(), "%s/projector_%s_last.pth" % (model_loc, label))
+        else:
+            torch.save(gnn.state_dict(), "%s/gnn_%s_last.pth" % (model_loc, label))
         if l_val < l_val_best:
             print("new best model")
             l_val_best = l_val
-            torch.save(gnn.state_dict(), "%s/gnn_%s_best.pth" % (model_loc, label))
+            if args.load_vicreg_path:
+                torch.save(projector.state_dict(), "%s/projector_%s_best.pth" % (model_loc, label))
+            else:
+                torch.save(gnn.state_dict(), "%s/gnn_%s_best.pth" % (model_loc, label))
             np.save(
                 "%s/validation_target_vals_%s.npy" % (model_perf_loc, label),
                 val_targetv,
@@ -265,6 +294,16 @@ def main(args):  # noqa: C901
 if __name__ == "__main__":
     """This is executed when run from the command line"""
     parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--finetune-mlp",
+        default="256-256-2",
+        help="Size and number of layers of the MLP finetuning head",
+    )
+    parser.add_argument(
+        "--mlp",
+        default="256-256-256",
+        help="Size and number of layers of the MLP expander head",
+    )
     parser.add_argument(
         "--train-path",
         type=str,
@@ -319,6 +358,26 @@ if __name__ == "__main__":
         dest="device",
         default="cuda",
         help="device to train gnn; follow pytorch convention",
+    )
+    parser.add_argument(
+        "--load-vicreg-path",
+        type="str",
+        action="store",
+        default=None,
+        help="Load weights from vicreg model if enabled",
+    )
+    parser.add_argument(
+        "--shared",
+        action="store_true",
+        help="share parameters of backbone",
+    )
+    parser.add_argument(
+        "--transform-inputs",
+        type=int,
+        action="store",
+        dest="transform_inputs",
+        default=64,
+        help="transform_inputs",
     )
 
     args = parser.parse_args()

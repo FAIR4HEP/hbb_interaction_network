@@ -54,7 +54,7 @@ class VICReg(nn.Module):
         self.N_y = self.y_backbone.N
         self.embedding = args.Do
         self.return_embedding = args.return_embedding
-        self.projector = Projector(args, self.embedding)
+        self.projector = Projector(args.mlp, self.embedding)
 
     def forward(self, x, y):
         # x: [batch, x_inputs, N_x]
@@ -93,8 +93,8 @@ class VICReg(nn.Module):
         return loss
 
 
-def Projector(args, embedding):
-    mlp_spec = f"{embedding}-{args.mlp}"
+def Projector(mlp, embedding):
+    mlp_spec = f"{embedding}-{mlp}"
     layers = []
     f = list(map(int, mlp_spec.split("-")))
     for i in range(len(f) - 2):
@@ -311,7 +311,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--mlp",
-        default="512-512-512",
+        default="256-256-256",
         help="Size and number of layers of the MLP expander head",
     )
     parser.add_argument(

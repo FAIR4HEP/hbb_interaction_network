@@ -104,10 +104,8 @@ class GraphNet(nn.Module):
         B = nn.functional.relu(self.fr1(B.view(-1, 2 * self.P + self.Dr)))
         B = nn.functional.relu(self.fr2(B))
         E = nn.functional.relu(self.fr3(B).view(-1, self.Nr, self.De))
-        del B
         E = torch.transpose(E, 1, 2).contiguous()
         Ebar_pp = self.tmul(E, torch.transpose(self.Rr, 0, 1).contiguous())
-        del E
 
         # Secondary Vertex - PF Candidate
         Ork = self.tmul(x, self.Rk)
@@ -118,11 +116,9 @@ class GraphNet(nn.Module):
         B = nn.functional.relu(self.fr1_pv(B.view(-1, self.S + self.P + self.Dr)))
         B = nn.functional.relu(self.fr2_pv(B))
         E = nn.functional.relu(self.fr3_pv(B).view(-1, self.Nt, self.De))
-        del B
         E = torch.transpose(E, 1, 2).contiguous()
         Ebar_pv = self.tmul(E, torch.transpose(self.Rk, 0, 1).contiguous())
         Ebar_vp = self.tmul(E, torch.transpose(self.Rv, 0, 1).contiguous())
-        del E
 
         # Secondary vertex - secondary vertex
         if self.vv_branch:
@@ -134,40 +130,30 @@ class GraphNet(nn.Module):
             B = nn.functional.relu(self.fr1_vv(B.view(-1, 2 * self.S + self.Dr)))
             B = nn.functional.relu(self.fr2_vv(B))
             E = nn.functional.relu(self.fr3_vv(B).view(-1, self.Ns, self.De))
-            del B
             E = torch.transpose(E, 1, 2).contiguous()
             Ebar_vv = self.tmul(E, torch.transpose(self.Rl, 0, 1).contiguous())
-            del E
 
         # Final output matrix for particles
         C = torch.cat([x, Ebar_pp, Ebar_pv], 1)
-        del Ebar_pp
-        del Ebar_pv
         C = torch.transpose(C, 1, 2).contiguous()
         # Second MLP
         C = nn.functional.relu(self.fo1(C.view(-1, self.P + self.Dx + (2 * self.De))))
         C = nn.functional.relu(self.fo2(C))
         Omatrix = nn.functional.relu(self.fo3(C).view(-1, self.N, self.Do))
-        del C
 
         if self.vv_branch:
             # Final output matrix for particles
             C = torch.cat([y, Ebar_vv, Ebar_vp], 1)
-            del Ebar_vv
-            del Ebar_vp
             C = torch.transpose(C, 1, 2).contiguous()
             # Second MLP
             C = nn.functional.relu(self.fo1_v(C.view(-1, self.S + self.Dx + (2 * self.De))))
             C = nn.functional.relu(self.fo2_v(C))
             O_v = nn.functional.relu(self.fo3_v(C).view(-1, self.Nv, self.Do))
-            del C
 
         # Taking the sum of over each particle/vertex
         N = torch.sum(Omatrix, dim=1)
-        del Omatrix
         if self.vv_branch:
             N_v = torch.sum(O_v, dim=1)
-            del O_v
 
         # Classification MLP
         if self.vv_branch:
@@ -239,24 +225,19 @@ class GraphNetSingle(nn.Module):
         B = nn.functional.relu(self.fr1(B.view(-1, 2 * self.P)))
         B = nn.functional.relu(self.fr2(B))
         E = nn.functional.relu(self.fr3(B).view(-1, self.Nr, self.De))
-        del B
         E = torch.transpose(E, 1, 2).contiguous()
         Ebar_pp = self.tmul(E, torch.transpose(self.Rr, 0, 1).contiguous())
-        del E
 
         # Final output matrix for particles
         C = torch.cat([x, Ebar_pp], 1)
-        del Ebar_pp
         C = torch.transpose(C, 1, 2).contiguous()
         # Second MLP
-        C = nn.functional.relu(self.fo1(C.view(-1, self.P + (2 * self.De))))
+        C = nn.functional.relu(self.fo1(C.view(-1, self.P + self.De)))
         C = nn.functional.relu(self.fo2(C))
         Omatrix = nn.functional.relu(self.fo3(C).view(-1, self.N, self.Do))
-        del C
 
         # Taking the sum of over each particle/vertex
         N = torch.sum(Omatrix, dim=1)
-        del Omatrix
 
         # Classification MLP
         N = self.fc_fixed(N)

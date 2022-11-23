@@ -167,6 +167,9 @@ def main(args):
 
     n_epochs = args.epoch
     batch_size = args.batch_size
+    outdir = args.outdir
+    label = args.label
+    args.return_embedding = False
 
     data_train = H5Data(
         batch_size=batch_size,
@@ -235,14 +238,14 @@ def main(args):
         if l_val < l_val_best:
             print("New best model")
             l_val_best = l_val
-            torch.save(model.state_dict(), "vicreg_best.pth")
-        torch.save(model.state_dict(), "vicreg_last.pth")
+            torch.save(model.state_dict(), f"{outdir}/vicreg_{label}_best.pth")
+        torch.save(model.state_dict(), f"{outdir}/vicreg_{label}_last.pth")
         np.save(
-            "vicreg_loss_train.npy",
+            f"{outdir}/vicreg_{label}_loss_train.npy",
             np.array(loss_train),
         )
         np.save(
-            "vicreg_loss_val.npy",
+            f"{outdir}/vicreg_{label}_loss_val.npy",
             np.array(loss_val),
         )
 
@@ -288,7 +291,7 @@ if __name__ == "__main__":
         type=str,
         action="store",
         dest="label",
-        default="",
+        default="new",
         help="a label for the model",
     )
     parser.add_argument(

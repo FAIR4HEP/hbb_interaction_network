@@ -18,7 +18,7 @@ spec:
             git checkout vicreg &&
             git pull &&
             pip install -e . &&
-            python -m src.models.finetune --batch-size 1024 --epoch 200 --just-svs --label max_npv_15 --train-path /ssl-jet-vol/hbb_interaction_network/data/processed/max_npv_15
+            python -m src.models.finetune --batch-size 1024 --epoch 200 --just-svs --label max_npv_15 --train-path /ssl-jet-vol/hbb_interaction_network/data/processed/max_npv_15/train/
         volumeMounts:
         - mountPath: /ssl-jet-vol
           name: ssl-jet-vol

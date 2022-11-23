@@ -169,9 +169,9 @@ def main(args):  # noqa: C901
             targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).to(device)
             optimizer.zero_grad()
             if just_svs:
-                out = gnn(trainingv.to(device), trainingv_sv.to(device))
-            elif just_tracks:
                 out = gnn(trainingv_sv.to(device))
+            elif just_tracks:
+                out = gnn(trainingv.to(device))
             else:
                 out = gnn(trainingv.to(device), trainingv_sv.to(device))
             batch_loss = loss(out, targetv.to(device))
@@ -197,9 +197,12 @@ def main(args):  # noqa: C901
             trainingv = (torch.FloatTensor(training)).to(device)
             trainingv_sv = (torch.FloatTensor(training_sv)).to(device)
             targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).to(device)
-
-            out = gnn(trainingv.to(device), trainingv_sv.to(device))
-
+            if just_svs:
+                out = gnn(trainingv_sv.to(device))
+            elif just_tracks:
+                out = gnn(trainingv.to(device))
+            else:
+                out = gnn(trainingv.to(device), trainingv_sv.to(device))
             lst.append(softmax(out).cpu().data.numpy())
             l_val = loss(out, targetv.to(device))
             loss_val.append(l_val.item())

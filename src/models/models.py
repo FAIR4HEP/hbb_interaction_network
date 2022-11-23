@@ -19,7 +19,7 @@ class GraphNet(nn.Module):
         softmax=False,
         device="cpu",
     ):
-        super(GraphNet, self).__init__()
+        super().__init__()
         self.hidden = int(hidden)
         self.P = params
         self.N = n_constituents
@@ -198,7 +198,7 @@ class GraphNetSingle(nn.Module):
         softmax=False,
         device="cpu",
     ):
-        super(GraphNet, self).__init__()
+        super().__init__()
         self.hidden = int(hidden)
         self.P = params
         self.N = n_constituents
@@ -283,7 +283,7 @@ class GraphNetEmbedding(nn.Module):
         Do=6,
         device="cpu",
     ):
-        super(GraphNetEmbedding, self).__init__()
+        super().__init__()
         self.P = n_features
         self.N = n_constituents
         self.Nr = self.N * (self.N - 1)

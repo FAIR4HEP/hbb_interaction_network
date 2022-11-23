@@ -3,8 +3,6 @@ import glob
 from pathlib import Path
 
 import numpy as np
-import onnx
-import onnxruntime as ort
 import torch
 
 if torch.cuda.is_available():
@@ -15,8 +13,9 @@ import yaml
 from scipy.special import softmax
 from sklearn.metrics import accuracy_score, roc_auc_score
 
+from models import GraphNet, GraphNetSingle
+
 project_dir = Path(__file__).resolve().parents[2]
-save_path = f"{project_dir}/data/processed/test/"
 definitions = f"{project_dir}/src/data/definitions.yml"
 with open(definitions) as yaml_file:
     defn = yaml.load(yaml_file, Loader=yaml.FullLoader)
@@ -43,34 +42,36 @@ def main(args, evaluating_test=True):  # noqa: C901
     else:
         dataset = "train"
 
-    for test_file in sorted(glob.glob(f"{save_path}/{dataset}_*_features_2.npy")):
+    for test_file in sorted(glob.glob(f"{args.save_path}/{dataset}_*_features_2.npy")):
         test_2.append(np.load(test_file))
     test = np.concatenate(test_2)
 
-    for test_file in sorted(glob.glob(f"{save_path}/{dataset}_*_features_3.npy")):
+    for test_file in sorted(glob.glob(f"{args.save_path}/{dataset}_*_features_3.npy")):
         test_3.append(np.load(test_file))
     test_sv = np.concatenate(test_3)
 
-    for test_file in sorted(glob.glob(f"{save_path}/{dataset}_*_spectators.npy")):
+    for test_file in sorted(glob.glob(f"{args.save_path}/{dataset}_*_spectators.npy")):
         test_specs.append(np.load(test_file))
     test_spec = np.concatenate(test_specs)
 
-    for test_file in sorted(glob.glob(f"{save_path}/{dataset}_*_truth.npy")):
+    for test_file in sorted(glob.glob(f"{args.save_path}/{dataset}_*_truth.npy")):
         target_tests.append(np.load(test_file))
     target_test = np.concatenate(target_tests)
 
     fj_pt = test_spec[:, 0, 0]
     fj_eta = test_spec[:, 0, 1]
     fj_sdmass = test_spec[:, 0, 2]
-    # no_undef = np.sum(target_test,axis=1) == 1
-    no_undef = fj_pt > -999  # no cut
+    if args.no_undef:
+        no_undef = np.sum(target_test, axis=1) == 1
+    else:
+        no_undef = fj_pt > -999  # no cut
 
-    min_pt = -999  # 300
-    max_pt = 99999  # 2000
-    min_eta = -999  # no cut
-    max_eta = 999  # no cut
-    min_msd = -999  # 40
-    max_msd = 9999  # 200
+    min_pt = args.min_pt  # 300
+    max_pt = args.max_pt  # 2000
+    min_eta = args.min_eta  # no cut
+    max_eta = args.max_eta  # no cut
+    min_msd = args.min_msd  # 40
+    max_msd = args.max_msd  # 200
 
     for array in [test, test_sv, test_spec, target_test]:
         array = array[
@@ -84,77 +85,64 @@ def main(args, evaluating_test=True):  # noqa: C901
         ]
 
     # Convert two sets into two branch with one set in both and one set in only one (Use for this file)
-    vv_branch = args.vv_branch
-    set_onnx = args.set_onnx
-
     prediction = np.array([])
 
     batch_size = args.batch_size
     torch.cuda.empty_cache()
 
-    from models import GraphNet
-
-    gnn = GraphNet(
-        n_constituents=N,
-        n_targets=n_targets,
-        params=len(params),
-        hidden=args.hidden,
-        n_vertices=N_sv,
-        params_v=len(params_sv),
-        vv_branch=int(vv_branch),
-        De=args.De,
-        Do=args.Do,
-        device=device,
-    )
-
-    if not set_onnx:
-        gnn.load_state_dict(torch.load(f"{project_dir}/models/trained_models/gnn_new_best.pth"))
-        print(sum(p.numel() for p in gnn.parameters() if p.requires_grad))
-
-        for j in tqdm.tqdm(range(0, target_test.shape[0], batch_size)):
-
-            dummy_input_1 = torch.from_numpy(test[j : j + batch_size]).to(device)
-            dummy_input_2 = torch.from_numpy(test_sv[j : j + batch_size]).to(device)
-            out_test = gnn(dummy_input_1, dummy_input_2)
-            out_test = out_test.cpu().data.numpy()
-            out_test = softmax(out_test, axis=1)
-            if j == 0:
-                prediction = out_test
-            else:
-                prediction = np.concatenate((prediction, out_test), axis=0)
-            del out_test
-
+    if args.just_svs:
+        gnn = GraphNetSingle(
+            n_constituents=N_sv,
+            n_targets=n_targets,
+            params=len(params_sv),
+            hidden=args.hidden,
+            De=args.De,
+            Do=args.Do,
+            device=device,
+        )
+    elif args.just_tracks:
+        gnn = GraphNetSingle(
+            n_constituents=N,
+            n_targets=n_targets,
+            params=len(params),
+            hidden=args.hidden,
+            De=args.De,
+            Do=args.Do,
+            device=device,
+        )
     else:
-        model_path = f"{project_dir}/models/trained_models/onnx_model/gnn_{batch_size}.onnx"
-        onnx_soft_res = []
-        for i in tqdm.tqdm(range(0, target_test.shape[0], batch_size)):
-            dummy_input_1 = test[i : i + batch_size]
-            dummy_input_2 = test_sv[i : i + batch_size]
+        gnn = GraphNet(
+            n_constituents=N,
+            n_targets=n_targets,
+            params=len(params),
+            hidden=args.hidden,
+            n_vertices=N_sv,
+            params_v=len(params_sv),
+            De=args.De,
+            Do=args.Do,
+            device=device,
+        )
 
-            # Load the ONNX model
-            model = onnx.load(model_path)
+    gnn.load_state_dict(torch.load(args.load_path))
+    gnn.eval()
+    print(sum(p.numel() for p in gnn.parameters() if p.requires_grad))
 
-            # Check that the IR is well formed
-            onnx.checker.check_model(model)
+    for j in tqdm.tqdm(range(0, target_test.shape[0], batch_size)):
+        dummy_input_1 = torch.from_numpy(test[j : j + batch_size]).to(device)
+        dummy_input_2 = torch.from_numpy(test_sv[j : j + batch_size]).to(device)
 
-            options = ort.SessionOptions()
-            options.intra_op_num_threads = 1
-            ort_session = ort.InferenceSession(model_path, options, providers=[("CUDAExecutionProvider")])
-
-            # compute ONNX Runtime output prediction
-            ort_inputs = {
-                ort_session.get_inputs()[0].name: dummy_input_1,
-                ort_session.get_inputs()[1].name: dummy_input_2,
-            }
-            ort_outs = ort_session.run(None, ort_inputs)
-
-            temp_onnx_res = ort_outs[0]
-
-            for x in temp_onnx_res:
-                x_ = softmax(x, axis=0)
-                onnx_soft_res.append(x_.tolist())
-
-        prediction = np.array(onnx_soft_res)
+        if args.just_svs:
+            out_test = gnn(dummy_input_2)
+        elif args.just_tracks:
+            out_test = gnn(dummy_input_1)
+        else:
+            out_test = gnn(dummy_input_1, dummy_input_2)
+        out_test = out_test.cpu().data.numpy()
+        out_test = softmax(out_test, axis=1)
+        if j == 0:
+            prediction = out_test
+        else:
+            prediction = np.concatenate((prediction, out_test), axis=0)
 
     auc = roc_auc_score(target_test[:, 1], prediction[:, 1])
     print("AUC: ", auc)
@@ -179,11 +167,53 @@ if __name__ == "__main__":
 
     # Optional arguments
     parser.add_argument(
-        "--vv_branch",
-        action="store_true",
-        dest="vv_branch",
-        default=False,
-        help="Consider vertex-vertex interaction in model",
+        "--save-path",
+        type=str,
+        action="store",
+        default=f"{project_dir}/data/processed/test/",
+        help="Input directory with testing files",
+    )
+    parser.add_argument(
+        "--min-msd",
+        type=float,
+        action="store",
+        default=-999.0,
+        help="Min mSD for evaluation",
+    )
+    parser.add_argument(
+        "--max-msd",
+        type=float,
+        action="store",
+        default=9999.0,
+        help="Max mSD for evaluation",
+    )
+    parser.add_argument(
+        "--min-pt",
+        type=float,
+        action="store",
+        default=-999.0,
+        help="Min pT for evaluation",
+    )
+    parser.add_argument(
+        "--max-pt",
+        type=float,
+        action="store",
+        default=99999.0,
+        help="Max pT for evaluation",
+    )
+    parser.add_argument(
+        "--min-eta",
+        type=float,
+        action="store",
+        default=-999.0,
+        help="Min eta for evaluation",
+    )
+    parser.add_argument(
+        "--max-eta",
+        type=float,
+        action="store",
+        default=999.0,
+        help="Max eta for evaluation",
     )
     parser.add_argument("--De", type=int, action="store", dest="De", default=20, help="De")
     parser.add_argument("--Do", type=int, action="store", dest="Do", default=24, help="Do")
@@ -197,18 +227,35 @@ if __name__ == "__main__":
         help="batch_size",
     )
     parser.add_argument(
-        "--set_onnx",
-        action="store_true",
-        dest="set_onnx",
-        default=False,
-        help="set_onnx",
-    )
-    parser.add_argument(
         "--device",
         action="store",
         dest="device",
         default="cpu",
         help="device to train gnn; follow pytorch convention",
+    )
+    parser.add_argument(
+        "--no-undef",
+        action="store_true",
+        help="no undefined labels for evaluation",
+    )
+    parser.add_argument(
+        "--load-path",
+        type=str,
+        action="store",
+        default=f"{project_dir}/models/trained_models/gnn_new_best.pth",
+        help="Load weights from model if enabled",
+    )
+    parser.add_argument(
+        "--just-svs",
+        action="store_true",
+        default=False,
+        help="Consider just secondary vertices in model",
+    )
+    parser.add_argument(
+        "--just-tracks",
+        action="store_true",
+        default=False,
+        help="Consider just tracks in model",
     )
 
     args = parser.parse_args()

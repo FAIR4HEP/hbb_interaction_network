@@ -18,13 +18,13 @@ import tqdm
 import yaml
 
 from src.data.h5data import H5Data
-from src.models.models import GraphNet
+from src.models.models import GraphNet, GraphNetSingle
+from src.models.pretrain_vicreg import Projector, VICReg, get_backbones
 
 os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 
 project_dir = Path(__file__).resolve().parents[2]
 
-train_path = f"{project_dir}/data/processed/train/"
 definitions = f"{project_dir}/src/data/definitions.yml"
 with open(definitions) as yaml_file:
     defn = yaml.load(yaml_file, Loader=yaml.FullLoader)
@@ -37,31 +37,11 @@ params_sv = defn["features_3"]
 
 
 def main(args):  # noqa: C901
-    """Training function that takes a collection of arguments.
-
-    Attributes:
-      args.outdir: Output directory for trained models
-      args.npy_indir: intput directory for data
-      args.vv_branch: consider vertex-vertex interaction in model
-      args.De: The dimension of particle-vertex and particle-particle latent space
-      args.Do: The dimenstion of pre-aggregate latent space representation
-      args.hidden: Number of nodes in hidden layers of MLP
-      args.drop_rate: drop-rate for signal (Hbb jet) data to train on a dataset with skewed statistics
-      args.epoch: Number of Epochs
-      args.drop_pfeatures: comma separated indices of the particle candidate features to be dropped
-      args.drop_svfeatures: comma separated indices of the secondary vertex features to be dropped
-      args.label: a label for the model to be used as a suffix for saving model and its metadata
-      args.batch_size: batch_size
-      args.load_def: Load weights from default model (default: `{project_dir}/models/trained_models/gnn_baseline_best.pth`)
-      args.random_split: randomly split train test data if enabled
-      args.device: device to train gnn; follow pytorch convention
-
-    """
     model_dict = {}
 
     device = args.device
 
-    files = glob.glob(os.path.join(train_path, "newdata_*.h5"))
+    files = glob.glob(os.path.join(args.train_path, "newdata_*.h5"))
     # take first 10% of files for validation
     # n_val should be 5 for full dataset
     n_val = max(1, int(0.1 * len(files)))
@@ -69,37 +49,19 @@ def main(args):  # noqa: C901
     files_train = files[n_val:]
 
     outdir = args.outdir
-    vv_branch = args.vv_branch
-    drop_rate = args.drop_rate
-    load_def = args.load_def
-    random_split = args.random_split
-    indir = args.indir
-
-    if args.drop_pfeatures != "":
-        drop_pfeatures = list(map(int, str(args.drop_pfeatures).split(",")))
-    else:
-        drop_pfeatures = []
-
-    if args.drop_svfeatures != "":
-        drop_svfeatures = list(map(int, str(args.drop_svfeatures).split(",")))
-    else:
-        drop_svfeatures = []
+    just_svs = args.just_svs
+    just_tracks = args.just_tracks
 
     label = args.label
-    if label == "" and drop_rate != 0:
-        label = "new_DR" + str(int(drop_rate * 100.0))
-    elif label == "" and drop_rate == 0:
-        label = "new"
-    if len(drop_pfeatures) > 0:
-        print("The following particle candidate features to be dropped: ", drop_pfeatures)
-    if len(drop_svfeatures) > 0:
-        print("The following secondary vertex features to be dropped: ", drop_svfeatures)
+    if just_svs:
+        label += "_just_svs"
+    if just_tracks:
+        label += "_just_tracks"
     n_epochs = args.epoch
     batch_size = args.batch_size
-    model_loc = "{}trained_models/".format(outdir)
-    model_perf_loc = "{}model_performances".format(outdir)
-    model_dict_loc = "{}model_dicts".format(outdir)
-    os.system("chmod ugo+rwx {} {} {}".format(model_loc, model_perf_loc, model_dict_loc))
+    model_loc = "{}/trained_models/".format(outdir)
+    model_perf_loc = "{}/model_performances".format(outdir)
+    model_dict_loc = "{}/model_dicts".format(outdir)
     os.system("mkdir -p {} {} {}".format(model_loc, model_perf_loc, model_dict_loc))
 
     # Saving the model's metadata as a json dict
@@ -110,148 +72,76 @@ def main(args):  # noqa: C901
     f_model.close()
 
     # Get the training and validation data
-    if random_split is False:
-        data_train = H5Data(
-            batch_size=batch_size,
-            cache=None,
-            preloading=0,
-            features_name="training_subgroup",
-            labels_name="target_subgroup",
-            spectators_name="spectator_subgroup",
-        )
-        data_train.set_file_names(files_train)
-        data_val = H5Data(
-            batch_size=batch_size,
-            cache=None,
-            preloading=0,
-            features_name="training_subgroup",
-            labels_name="target_subgroup",
-            spectators_name="spectator_subgroup",
-        )
-        data_val.set_file_names(files_val)
-
-        n_val = data_val.count_data()
-        n_train = data_train.count_data()
-        print("val data:", n_val)
-        print("train data:", n_train)
-    else:
-        t_X1_tr = np.load("{}/data_X1_tr.npy".format(indir))
-        t_X2_tr = np.load("{}/data_X2_tr.npy".format(indir))
-        t_X3_tr = np.load("{}/data_X3_tr.npy".format(indir))
-
-        t_X4_tr = np.load("{}/data_X4_tr.npy".format(indir))
-        t_Y_tr = np.load("{}/data_Y_tr.npy".format(indir))
-        t_Z_tr = np.load("{}/data_Z_tr.npy".format(indir))
-
-        t_X1_te = np.load("{}/data_X1_te.npy".format(indir))
-        t_X2_te = np.load("{}/data_X2_te.npy".format(indir))
-        t_X3_te = np.load("{}/data_X3_te.npy".format(indir))
-
-        t_X4_te = np.load("{}/data_X4_te.npy".format(indir))
-        t_Y_te = np.load("{}/data_Y_te.npy".format(indir))
-        t_Z_te = np.load("{}/data_Z_te.npy".format(indir))
-
-        # print("seperate converting finished")
-        t_X_tr = [t_X1_tr, t_X2_tr, t_X3_tr, t_X4_tr]
-        t_Y_tr = [t_Y_tr]
-        t_Z_tr = [t_Z_tr]
-        print("mid for train finish numpy convert")
-        t_X_te = [t_X1_te, t_X2_te, t_X3_te, t_X4_te]
-        t_Y_te = [t_Y_te]
-        t_Z_te = [t_Z_te]
-
-        del t_X1_tr, t_X2_tr, t_X3_tr, t_X4_tr
-        del t_X1_te, t_X2_te, t_X3_te, t_X4_te
-
-        print("!!!", len(t_X_te), len(t_Y_te), len(t_Z_te))
-
-    gnn = GraphNet(
-        n_constituents=N,
-        n_targets=n_targets,
-        params=len(params) - len(drop_pfeatures),
-        hidden=args.hidden,
-        n_vertices=N_sv,
-        params_v=len(params_sv) - len(drop_svfeatures),
-        vv_branch=int(vv_branch),
-        De=args.De,
-        Do=args.Do,
-        device=device,
+    data_train = H5Data(
+        batch_size=batch_size,
+        cache=None,
+        preloading=0,
+        features_name="training_subgroup",
+        labels_name="target_subgroup",
+        spectators_name="spectator_subgroup",
     )
+    data_train.set_file_names(files_train)
+    data_val = H5Data(
+        batch_size=batch_size,
+        cache=None,
+        preloading=0,
+        features_name="training_subgroup",
+        labels_name="target_subgroup",
+        spectators_name="spectator_subgroup",
+    )
+    data_val.set_file_names(files_val)
 
-    """
-         N = Number of charged particles (60)
-         n_targets = 2 (number of target_class)
-         hidden = number of nodes in hidden layers
-         params = number of features for each charged particle (30)
-         n_vertices = number of secondary vertices (5)
-         params_v = number of features for secondary vertices (14)
-         vv_branch = to allow vv_branch ? (0 or False by default)
-         De = Output dimension of particle-particle interaction NN (fR)
-         Do = Output dimension of pre-aggregator transformation NN (fO)
-         device = device to train gnn; follow pytorch convention
-    """
+    n_val = data_val.count_data()
+    n_train = data_train.count_data()
+    print("val data:", n_val)
+    print("train data:", n_train)
 
-    if load_def:
-        if os.path.exists(f"{project_dir}/models/trained_models/gnn_baseline_best.pth"):
-            defmodel_exists = True
+    if args.load_vicreg_path:
+        args.x_inputs = len(params)
+        args.y_inputs = len(params_sv)
+        args.x_backbone, args.y_backbone = get_backbones(args)
+        args.return_embedding = True
+        model = VICReg(args).to(args.device)
+        model.load_state_dict(torch.load(args.load_vicreg_path))
+        model.eval()
+        projector = Projector(args.finetune_mlp, 2 * model.num_features).to(args.device)
+        optimizer = optim.Adam(projector.parameters(), lr=0.0001)
+    else:
+        if just_svs:
+            gnn = GraphNetSingle(
+                n_constituents=N_sv,
+                n_targets=n_targets,
+                params=len(params_sv),
+                hidden=args.hidden,
+                De=args.De,
+                Do=args.Do,
+                device=device,
+            )
+        elif just_tracks:
+            gnn = GraphNetSingle(
+                n_constituents=N,
+                n_targets=n_targets,
+                params=len(params),
+                hidden=args.hidden,
+                De=args.De,
+                Do=args.Do,
+                device=device,
+            )
         else:
-            defmodel_exists = False
-        if not defmodel_exists:
-            print("Default model not found, skipping model preloading")
-            load_def = False
-
-    if load_def:
-        def_state_dict = torch.load(f"{project_dir}/models/trained_models/gnn_baseline_best.pth")
-        new_state_dict = gnn.state_dict()
-        for key in def_state_dict.keys():
-            if key not in ["fr1_pv.weight", "fr1.weight", "fo1.weight"]:
-                if new_state_dict[key].shape != def_state_dict[key].shape:
-                    print(
-                        "Tensor shapes don't match for key='{}': old = ({},{}); new = ({},{}): not updating it".format(
-                            key,
-                            def_state_dict[key].shape[0],
-                            def_state_dict[key].shape[1],
-                            new_state_dict[key].shape[0],
-                            new_state_dict[key].shape[1],
-                        )
-                    )
-                else:
-                    new_state_dict[key] = def_state_dict[key].clone()
-            else:
-                if key == "fr1_pv.weight":
-                    indices_to_keep = [i for i in range(len(params)) if i not in drop_pfeatures] + [
-                        len(params) + i for i in range(len(params_sv)) if i not in drop_svfeatures
-                    ]
-
-                if key == "fr1.weight":
-                    indices_to_keep = [i for i in range(len(params)) if i not in drop_pfeatures] + [
-                        len(params) + i for i in range(len(params)) if i not in drop_pfeatures
-                    ]
-
-                if key == "fo1.weight":
-                    indices_to_keep = [i for i in range(len(params)) if i not in drop_pfeatures] + list(
-                        range(len(params), len(params) + 2 * args.De)
-                    )
-
-                new_tensor = def_state_dict[key][:, indices_to_keep]
-                if new_state_dict[key].shape != new_tensor.shape:
-                    print(
-                        "Tensor shapes don't match for "
-                        + "key='{}': modified old = ({},{}); new = ({},{}): not updating it".format(
-                            key,
-                            new_tensor.shape[0],
-                            new_tensor.shape[1],
-                            new_state_dict[key].shape[0],
-                            new_state_dict[key].shape[1],
-                        )
-                    )
-
-                else:
-                    new_state_dict[key] = new_tensor.clone()
-        gnn.load_state_dict(new_state_dict)
+            gnn = GraphNet(
+                n_constituents=N,
+                n_targets=n_targets,
+                params=len(params),
+                hidden=args.hidden,
+                n_vertices=N_sv,
+                params_v=len(params_sv),
+                De=args.De,
+                Do=args.Do,
+                device=device,
+            )
+        optimizer = optim.Adam(gnn.parameters(), lr=0.0001)
 
     loss = nn.CrossEntropyLoss(reduction="mean")
-    optimizer = optim.Adam(gnn.parameters(), lr=0.0001)
     loss_vals_training = np.zeros(n_epochs)
     loss_std_training = np.zeros(n_epochs)
     loss_vals_validation = np.zeros(n_epochs)
@@ -275,147 +165,74 @@ def main(args):  # noqa: C901
         loss_training = []
         correct = []
         tic = time.perf_counter()
-        sig_count = 0
-        data_dropped = 0
 
         # train process
-        if random_split is False:
-            iterator = data_train.generate_data()
-            total_ = int(n_train / batch_size)
-        else:
-            batch_num_tr = int(len(t_X_tr[1]) / batch_size)
-            print(
-                "batch num, X_tr_1, batch_size: ",
-                batch_num_tr,
-                len(t_X_tr[1]),
-                batch_size,
-            )
-            iterator = range(batch_num_tr)
-            total_ = batch_num_tr
+        iterator = data_train.generate_data()
+        total_ = int(n_train / batch_size)
 
-        for element in tqdm.tqdm(iterator, total=total_):
-            if random_split is False:
-                (sub_X, sub_Y, _) = element
-                training = sub_X[2]
-                training_sv = sub_X[3]
-                target = sub_Y[0]
+        pbar = tqdm.tqdm(iterator, total=total_)
+        for element in pbar:
+            (sub_X, sub_Y, _) = element
+            training = sub_X[2]
+            training_sv = sub_X[3]
+            target = sub_Y[0]
 
-                trainingv = (torch.FloatTensor(training)).to(device)
-                trainingv_sv = (torch.FloatTensor(training_sv)).to(device)
-                targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).to(device)
-            else:
-                idx_ = element
-                if idx_ == batch_num_tr - 1:
-                    training = t_X_tr[2][idx_ * batch_size : -1]
-                    training_sv = t_X_tr[3][idx_ * batch_size : -1]
-                    target = t_Y_tr[0][idx_ * batch_size : -1]
-
-                    trainingv = (torch.FloatTensor(training)).to(device)
-                    trainingv_sv = (torch.FloatTensor(training_sv)).to(device)
-                    targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).to(device)
-
-                else:
-                    training = t_X_tr[2][idx_ * batch_size : (idx_ + 1) * batch_size]
-                    training_sv = t_X_tr[3][idx_ * batch_size : (idx_ + 1) * batch_size]
-                    target = t_Y_tr[0][idx_ * batch_size : (idx_ + 1) * batch_size]
-
-                    trainingv = (torch.FloatTensor(training)).to(device)
-                    trainingv_sv = (torch.FloatTensor(training_sv)).to(device)
-                    targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).to(device)
-
-            if drop_rate > 0:
-                keep_indices = targetv == 0
-                sig_count += batch_size - torch.sum(keep_indices).item()
-                to_turn_off = int((batch_size - torch.sum(keep_indices).item()) * drop_rate)
-                psum = torch.cumsum(~keep_indices, 0)
-                to_keep_after = torch.sum(psum <= to_turn_off).item()
-                keep_indices[to_keep_after:] = torch.Tensor([True] * (batch_size - to_keep_after))
-                data_dropped += batch_size - torch.sum(keep_indices).item()
-                trainingv = trainingv[keep_indices]
-                trainingv_sv = trainingv_sv[keep_indices]
-                targetv = targetv[keep_indices]
-            if len(drop_pfeatures) > 0:
-                keep_features = [i for i in np.arange(0, len(params), 1, dtype=int) if i not in drop_pfeatures]
-                trainingv = trainingv[:, keep_features, :]
-            if len(drop_svfeatures) > 0:
-                keep_features = [i for i in np.arange(0, len(params_sv), 1, dtype=int) if i not in drop_svfeatures]
-                trainingv_sv = trainingv_sv[:, keep_features, :]
-
+            trainingv = (torch.FloatTensor(training)).to(device)
+            trainingv_sv = (torch.FloatTensor(training_sv)).to(device)
+            targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).to(device)
             optimizer.zero_grad()
-            out = gnn(trainingv.to(device), trainingv_sv.to(device))
-            batch_loss = loss(out, targetv.to(device))
+            if args.load_vicreg_path:
+                projector.train()
+                embedding, embedding_sv = model(trainingv, trainingv_sv)
+                out = projector(torch.cat((embedding, embedding_sv), dim=-1))
+            else:
+                gnn.train()
+                if just_svs:
+                    out = gnn(trainingv_sv)
+                elif just_tracks:
+                    out = gnn(trainingv)
+                else:
+                    out = gnn(trainingv, trainingv_sv)
+            batch_loss = loss(out, targetv)
             loss_training.append(batch_loss.item())
+            pbar.set_description(f"Training loss: {batch_loss.item():.4f}")
             batch_loss.backward()
             optimizer.step()
-            del trainingv, trainingv_sv, targetv
 
-        if drop_rate > 0.0:
-            print("Signal Count: {}, Data Dropped: {}".format(sig_count, data_dropped))
         toc = time.perf_counter()
         print(f"Training done in {toc - tic:0.4f} seconds")
         tic = time.perf_counter()
 
         # validate process
-        if random_split is False:
-            iterator = data_val.generate_data()
-            total_ = int(n_val / batch_size)
-        else:
-            batch_num_te = int(len(t_X_te[1]) / batch_size)
-            print(
-                "batch num, X_te_1, batch_size: ",
-                batch_num_te,
-                len(t_X_te[1]),
-                batch_size,
-            )
-            iterator = range(batch_num_te)
-            total_ = batch_num_te
+        iterator = data_val.generate_data()
+        total_ = int(n_val / batch_size)
+        pbar = tqdm.tqdm(iterator, total=total_)
+        for element in pbar:
+            (sub_X, sub_Y, _) = element
+            training = sub_X[2]
+            training_sv = sub_X[3]
+            target = sub_Y[0]
 
-        for element in tqdm.tqdm(iterator, total=total_):
-            if random_split is False:
-                (sub_X, sub_Y, _) = element
-                training = sub_X[2]
-                training_sv = sub_X[3]
-                target = sub_Y[0]
-
-                trainingv = (torch.FloatTensor(training)).to(device)
-                trainingv_sv = (torch.FloatTensor(training_sv)).to(device)
-                targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).to(device)
-
+            trainingv = (torch.FloatTensor(training)).to(device)
+            trainingv_sv = (torch.FloatTensor(training_sv)).to(device)
+            targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).to(device)
+            if args.load_vicreg_path:
+                projector.eval()
+                embedding, embedding_sv = model(trainingv, trainingv_sv)
+                out = projector(torch.cat((embedding, embedding_sv), dim=-1))
             else:
-                idx_ = element
-                if idx_ == batch_num_tr - 1:
-                    training = t_X_tr[2][idx_ * batch_size : -1]
-                    training_sv = t_X_tr[3][idx_ * batch_size : -1]
-                    target = t_Y_tr[0][idx_ * batch_size : -1]
-
-                    trainingv = (torch.FloatTensor(training)).to(device)
-                    trainingv_sv = (torch.FloatTensor(training_sv)).to(device)
-                    targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).to(device)
-
+                gnn.eval()
+                if just_svs:
+                    out = gnn(trainingv_sv)
+                elif just_tracks:
+                    out = gnn(trainingv)
                 else:
-                    training = t_X_tr[2][idx_ * batch_size : (idx_ + 1) * batch_size]
-                    training_sv = t_X_tr[3][idx_ * batch_size : (idx_ + 1) * batch_size]
-                    target = t_Y_tr[0][idx_ * batch_size : (idx_ + 1) * batch_size]
-
-                    trainingv = (torch.FloatTensor(training)).to(device)
-                    trainingv_sv = (torch.FloatTensor(training_sv)).to(device)
-                    targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).to(device)
-
-            if len(drop_pfeatures) > 0:
-                keep_features = [i for i in np.arange(0, len(params), 1, dtype=int) if i not in drop_pfeatures]
-                trainingv = trainingv[:, keep_features, :]
-            if len(drop_svfeatures) > 0:
-                keep_features = [i for i in np.arange(0, len(params_sv), 1, dtype=int) if i not in drop_svfeatures]
-                trainingv_sv = trainingv_sv[:, keep_features, :]
-
-            out = gnn(trainingv.to(device), trainingv_sv.to(device))
-
+                    out = gnn(trainingv, trainingv_sv)
             lst.append(softmax(out).cpu().data.numpy())
-            l_val = loss(out, targetv.to(device))
+            l_val = loss(out, targetv)
             loss_val.append(l_val.item())
-
+            pbar.set_description(f"Validation loss: {l_val.item():.4f}")
             correct.append(target)
-            del trainingv, trainingv_sv, targetv
         toc = time.perf_counter()
         print(f"Evaluation done in {toc - tic:0.4f} seconds")
         l_val = np.mean(np.array(loss_val))
@@ -427,11 +244,17 @@ def main(args):  # noqa: C901
         print("Training Loss: ", l_training)
         val_targetv = np.concatenate(correct)
 
-        torch.save(gnn.state_dict(), "%s/gnn_%s_last.pth" % (model_loc, label))
+        if args.load_vicreg_path:
+            torch.save(projector.state_dict(), "%s/projector_%s_last.pth" % (model_loc, label))
+        else:
+            torch.save(gnn.state_dict(), "%s/gnn_%s_last.pth" % (model_loc, label))
         if l_val < l_val_best:
             print("new best model")
             l_val_best = l_val
-            torch.save(gnn.state_dict(), "%s/gnn_%s_best.pth" % (model_loc, label))
+            if args.load_vicreg_path:
+                torch.save(projector.state_dict(), "%s/projector_%s_best.pth" % (model_loc, label))
+            else:
+                torch.save(gnn.state_dict(), "%s/gnn_%s_best.pth" % (model_loc, label))
             np.save(
                 "%s/validation_target_vals_%s.npy" % (model_perf_loc, label),
                 val_targetv,
@@ -472,7 +295,24 @@ def main(args):  # noqa: C901
 if __name__ == "__main__":
     """This is executed when run from the command line"""
     parser = argparse.ArgumentParser()
-
+    parser.add_argument(
+        "--finetune-mlp",
+        default="512-512-2",
+        help="Size and number of layers of the MLP finetuning head",
+    )
+    parser.add_argument(
+        "--mlp",
+        default="256-256-256",
+        help="Size and number of layers of the MLP expander head",
+    )
+    parser.add_argument(
+        "--train-path",
+        type=str,
+        action="store",
+        dest="train_path",
+        default=f"{project_dir}/data/processed/train/",
+        help="Input directory for training files",
+    )
     parser.add_argument(
         "--outdir",
         type=str,
@@ -482,55 +322,27 @@ if __name__ == "__main__":
         help="Output directory",
     )
     parser.add_argument(
-        "--npy_indir",
-        type=str,
-        action="store",
-        dest="indir",
-        default="./npy_data2",
-        help="Output directory",
+        "--just-svs",
+        action="store_true",
+        default=False,
+        help="Consider just secondary vertices in model",
     )
     parser.add_argument(
-        "--vv_branch",
+        "--just-tracks",
         action="store_true",
-        dest="vv_branch",
         default=False,
-        help="Consider vertex-vertex interaction in model",
+        help="Consider just tracks in model",
     )
-
     parser.add_argument("--De", type=int, action="store", dest="De", default=20, help="De")
     parser.add_argument("--Do", type=int, action="store", dest="Do", default=24, help="Do")
     parser.add_argument("--hidden", type=int, action="store", dest="hidden", default=60, help="hidden")
-    parser.add_argument(
-        "--drop-rate",
-        type=float,
-        action="store",
-        dest="drop_rate",
-        default=0.0,
-        help="Signal Drop rate",
-    )
     parser.add_argument("--epoch", type=int, action="store", dest="epoch", default=100, help="Epochs")
-    parser.add_argument(
-        "--drop-pfeatures",
-        type=str,
-        action="store",
-        dest="drop_pfeatures",
-        default="",
-        help="comma separated indices of the particle candidate features to be dropped",
-    )
-    parser.add_argument(
-        "--drop-svfeatures",
-        type=str,
-        action="store",
-        dest="drop_svfeatures",
-        default="",
-        help="comma separated indices of the secondary vertex features to be dropped",
-    )
     parser.add_argument(
         "--label",
         type=str,
         action="store",
         dest="label",
-        default="",
+        default="new",
         help="a label for the model",
     )
     parser.add_argument(
@@ -542,25 +354,31 @@ if __name__ == "__main__":
         help="batch_size",
     )
     parser.add_argument(
-        "--load-def",
-        action="store_true",
-        dest="load_def",
-        default=False,
-        help="Load weights from default model if enabled",
-    )
-    parser.add_argument(
-        "--random_split",
-        action="store_true",
-        dest="random_split",
-        default=False,
-        help="randomly split train test data if enabled",
-    )
-    parser.add_argument(
         "--device",
         action="store",
         dest="device",
-        default="cpu",
+        default="cuda",
         help="device to train gnn; follow pytorch convention",
+    )
+    parser.add_argument(
+        "--load-vicreg-path",
+        type=str,
+        action="store",
+        default=None,
+        help="Load weights from vicreg model if enabled",
+    )
+    parser.add_argument(
+        "--shared",
+        action="store_true",
+        help="share parameters of backbone",
+    )
+    parser.add_argument(
+        "--transform-inputs",
+        type=int,
+        action="store",
+        dest="transform_inputs",
+        default=64,
+        help="transform_inputs",
     )
 
     args = parser.parse_args()

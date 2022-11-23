@@ -183,8 +183,7 @@ def main(args):  # noqa: C901
             optimizer.zero_grad()
             if args.load_vicreg_path:
                 projector.train()
-                embedding = model(trainingv)
-                embedding_sv = model(trainingv_sv)
+                embedding, embedding_sv = model(trainingv, trainingv_sv)
                 out = projector(torch.cat((embedding, embedding_sv), dim=-1))
             else:
                 gnn.train()
@@ -219,8 +218,7 @@ def main(args):  # noqa: C901
             targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).to(device)
             if args.load_vicreg_path:
                 projector.eval()
-                embedding = model(trainingv)
-                embedding_sv = model(trainingv_sv)
+                embedding, embedding_sv = model(trainingv, trainingv_sv)
                 out = projector(torch.cat((embedding, embedding_sv), dim=-1))
             else:
                 gnn.eval()

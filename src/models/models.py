@@ -199,7 +199,7 @@ class GraphNetSingle(nn.Module):
         self.fr1 = nn.Linear(2 * self.P, self.hidden).to(self.device)
         self.fr2 = nn.Linear(self.hidden, int(self.hidden)).to(self.device)
         self.fr3 = nn.Linear(int(self.hidden), self.De).to(self.device)
-        self.fo1 = nn.Linear(self.P + (2 * self.De), self.hidden).to(self.device)
+        self.fo1 = nn.Linear(self.P + self.De, self.hidden).to(self.device)
         self.fo2 = nn.Linear(self.hidden, int(self.hidden)).to(self.device)
         self.fo3 = nn.Linear(int(self.hidden), self.Do).to(self.device)
 
@@ -229,8 +229,8 @@ class GraphNetSingle(nn.Module):
         Ebar_pp = self.tmul(E, torch.transpose(self.Rr, 0, 1).contiguous())
 
         # Final output matrix for particles
-        C = torch.cat([x, Ebar_pp], 1)
-        C = torch.transpose(C, 1, 2).contiguous()
+        C = torch.cat([x, Ebar_pp], dim=-2)
+        C = torch.transpose(C, -1, -2).contiguous()
         # Second MLP
         C = nn.functional.relu(self.fo1(C.view(-1, self.P + self.De)))
         C = nn.functional.relu(self.fo2(C))

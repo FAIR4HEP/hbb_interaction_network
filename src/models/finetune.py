@@ -361,7 +361,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--load-vicreg-path",
-        type="str",
+        type=str,
         action="store",
         default=None,
         help="Load weights from vicreg model if enabled",

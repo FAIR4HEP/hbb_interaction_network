@@ -101,13 +101,12 @@ def main(args):  # noqa: C901
             n_targets=n_targets,
             params=len(params_sv),
             hidden=args.hidden,
-            n_vertices=N_sv,
             De=args.De,
             Do=args.Do,
             device=device,
         )
     elif just_tracks:
-        gnn = GraphNet(
+        gnn = GraphNetSingle(
             n_constituents=N,
             n_targets=n_targets,
             params=len(params),

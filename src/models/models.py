@@ -210,10 +210,10 @@ class GraphNetSingle(nn.Module):
         self.assign_matrices()
         self.softmax = softmax
 
-        self.fr1 = nn.Linear(2 * self.P + self.Dr, self.hidden).to(self.device)
+        self.fr1 = nn.Linear(2 * self.P, self.hidden).to(self.device)
         self.fr2 = nn.Linear(self.hidden, int(self.hidden)).to(self.device)
         self.fr3 = nn.Linear(int(self.hidden), self.De).to(self.device)
-        self.fo1 = nn.Linear(self.P + self.Dx + (2 * self.De), self.hidden).to(self.device)
+        self.fo1 = nn.Linear(self.P + (2 * self.De), self.hidden).to(self.device)
         self.fo2 = nn.Linear(self.hidden, int(self.hidden)).to(self.device)
         self.fo3 = nn.Linear(int(self.hidden), self.Do).to(self.device)
 
@@ -236,7 +236,7 @@ class GraphNetSingle(nn.Module):
         B = torch.cat([Orr, Ors], 1)
         # First MLP
         B = torch.transpose(B, 1, 2).contiguous()
-        B = nn.functional.relu(self.fr1(B.view(-1, 2 * self.P + self.Dr)))
+        B = nn.functional.relu(self.fr1(B.view(-1, 2 * self.P)))
         B = nn.functional.relu(self.fr2(B))
         E = nn.functional.relu(self.fr3(B).view(-1, self.Nr, self.De))
         del B
@@ -249,7 +249,7 @@ class GraphNetSingle(nn.Module):
         del Ebar_pp
         C = torch.transpose(C, 1, 2).contiguous()
         # Second MLP
-        C = nn.functional.relu(self.fo1(C.view(-1, self.P + self.Dx + (2 * self.De))))
+        C = nn.functional.relu(self.fo1(C.view(-1, self.P + (2 * self.De))))
         C = nn.functional.relu(self.fo2(C))
         Omatrix = nn.functional.relu(self.fo3(C).view(-1, self.N, self.Do))
         del C

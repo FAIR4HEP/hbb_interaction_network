@@ -105,6 +105,7 @@ def main(args):  # noqa: C901
         model.load_state_dict(torch.load(args.load_vicreg_path))
         model.eval()
         projector = Projector(args.finetune_mlp, 2 * args.Do)
+        optimizer = optim.Adam(projector.parameters(), lr=0.0001)
     else:
         if just_svs:
             gnn = GraphNetSingle(
@@ -138,9 +139,9 @@ def main(args):  # noqa: C901
                 Do=args.Do,
                 device=device,
             )
+        optimizer = optim.Adam(gnn.parameters(), lr=0.0001)
 
     loss = nn.CrossEntropyLoss(reduction="mean")
-    optimizer = optim.Adam(gnn.parameters(), lr=0.0001)
     loss_vals_training = np.zeros(n_epochs)
     loss_std_training = np.zeros(n_epochs)
     loss_vals_validation = np.zeros(n_epochs)

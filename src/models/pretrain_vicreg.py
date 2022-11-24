@@ -13,7 +13,7 @@ import yaml
 from torch import nn
 
 from src.data.h5data import H5Data
-from src.models.models import GraphNetEmbedding
+from src.models.InteractionNet import InteractionNetTaggerEmbedding
 
 if torch.cuda.is_available():
     import setGPU  # noqa: F401
@@ -69,6 +69,10 @@ class VICReg(nn.Module):
         )  # [batch, N_y, transform_inputs]
         x = x.transpose(-1, -2).contiguous()  # [batch, x_inputs, N_x]
         y = y.transpose(-1, -2).contiguous()  # [batch, y_inputs, N_y]
+        x = self.x_backbone(x)
+        y = self.y_backbone(y)
+        if self.return_representations:
+            return x, y
         x = self.projector(self.x_backbone(x))
         y = self.projector(self.y_backbone(y))
         if self.return_embedding:
@@ -135,18 +139,18 @@ def get_backbones(args):
         nn.BatchNorm1d(args.Do),
         nn.ReLU(),
     )
-    x_backbone = GraphNetEmbedding(
-        n_constituents=N,
-        n_features=args.transform_inputs,
+    x_backbone = InteractionNetTaggerEmbedding(
+        dims=N,
+        features_dims=args.transform_inputs,
         fr=fr,
         fo=fo,
         De=args.De,
         Do=args.Do,
         device=args.device,
     )
-    y_backbone = GraphNetEmbedding(
-        n_constituents=N_sv,
-        n_features=args.transform_inputs,
+    y_backbone = InteractionNetTaggerEmbedding(
+        dims=N_sv,
+        features_dims=args.transform_inputs,
         fr=fr if args.shared else copy.deepcopy(fr),
         fo=fo if args.shared else copy.deepcopy(fo),
         De=args.De,
@@ -170,6 +174,7 @@ def main(args):
     outdir = args.outdir
     label = args.label
     args.return_embedding = False
+    args.return_representations = False
 
     data_train = H5Data(
         batch_size=batch_size,

@@ -10,10 +10,9 @@ if torch.cuda.is_available():
 
 import tqdm
 import yaml
+from InteractionNet import InteractionNetSingleTagger, InteractionNetTagger
 from scipy.special import softmax
 from sklearn.metrics import accuracy_score, roc_auc_score
-
-from models import GraphNet, GraphNetSingle
 
 project_dir = Path(__file__).resolve().parents[2]
 definitions = f"{project_dir}/src/data/definitions.yml"
@@ -91,33 +90,33 @@ def main(args, evaluating_test=True):  # noqa: C901
     torch.cuda.empty_cache()
 
     if args.just_svs:
-        gnn = GraphNetSingle(
-            n_constituents=N_sv,
-            n_targets=n_targets,
-            params=len(params_sv),
+        gnn = InteractionNetSingleTagger(
+            dims=N_sv,
+            num_classes=n_targets,
+            features_dims=len(params_sv),
             hidden=args.hidden,
             De=args.De,
             Do=args.Do,
             device=device,
         )
     elif args.just_tracks:
-        gnn = GraphNetSingle(
-            n_constituents=N,
-            n_targets=n_targets,
-            params=len(params),
+        gnn = InteractionNetSingleTagger(
+            dims=N,
+            num_classes=n_targets,
+            features_dims=len(params),
             hidden=args.hidden,
             De=args.De,
             Do=args.Do,
             device=device,
         )
     else:
-        gnn = GraphNet(
-            n_constituents=N,
-            n_targets=n_targets,
-            params=len(params),
+        gnn = InteractionNetTagger(
+            pf_dims=N,
+            sv_dims=N_sv,
+            num_classes=n_targets,
+            pf_features_dims=len(params),
+            sv_features_dims=len(params_sv),
             hidden=args.hidden,
-            n_vertices=N_sv,
-            params_v=len(params_sv),
             De=args.De,
             Do=args.Do,
             device=device,

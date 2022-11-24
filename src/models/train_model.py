@@ -18,7 +18,7 @@ import tqdm
 import yaml
 
 from src.data.h5data import H5Data
-from src.models.models import GraphNet, GraphNetSingle
+from src.models.InteractionNet import InteractionNetSingleTagger, InteractionNetTagger
 from src.models.pretrain_vicreg import Projector, VICReg, get_backbones
 
 os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
@@ -100,44 +100,42 @@ def main(args):  # noqa: C901
         args.x_inputs = len(params)
         args.y_inputs = len(params_sv)
         args.x_backbone, args.y_backbone = get_backbones(args)
-        args.return_embedding = True
+        args.return_embedding = False
+        args.return_representations = False
         model = VICReg(args).to(args.device)
         model.load_state_dict(torch.load(args.load_vicreg_path))
         model.eval()
-        projector = Projector(args.finetune_mlp, 2 * model.num_features).to(args.device)
+        projector = Projector(args.finetune_mlp, 2 * model.Do).to(args.device)
         optimizer = optim.Adam(projector.parameters(), lr=0.0001)
     else:
         if just_svs:
-            gnn = GraphNetSingle(
-                n_constituents=N_sv,
-                n_targets=n_targets,
-                params=len(params_sv),
+            gnn = InteractionNetSingleTagger(
+                dims=N_sv,
+                num_classes=n_targets,
+                features_dims=len(params_sv),
                 hidden=args.hidden,
                 De=args.De,
                 Do=args.Do,
-                device=device,
             )
         elif just_tracks:
-            gnn = GraphNetSingle(
-                n_constituents=N,
-                n_targets=n_targets,
-                params=len(params),
+            gnn = InteractionNetSingleTagger(
+                dims=N,
+                num_classes=n_targets,
+                features_dims=len(params),
                 hidden=args.hidden,
                 De=args.De,
                 Do=args.Do,
-                device=device,
             )
         else:
-            gnn = GraphNet(
-                n_constituents=N,
-                n_targets=n_targets,
-                params=len(params),
+            gnn = InteractionNetTagger(
+                pf_dims=N,
+                sv_dims=N_sv,
+                num_classes=n_targets,
+                pf_features_dims=len(params),
+                sv_features_dims=len(params_sv),
                 hidden=args.hidden,
-                n_vertices=N_sv,
-                params_v=len(params_sv),
                 De=args.De,
                 Do=args.Do,
-                device=device,
             )
         optimizer = optim.Adam(gnn.parameters(), lr=0.0001)
 
@@ -297,7 +295,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--finetune-mlp",
-        default="512-512-2",
+        default="256-256-2",
         help="Size and number of layers of the MLP finetuning head",
     )
     parser.add_argument(

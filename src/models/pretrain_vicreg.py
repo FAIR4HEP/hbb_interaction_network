@@ -74,8 +74,8 @@ class VICReg(nn.Module):
         y = self.y_backbone(y)
         if self.return_representation:
             return x, y
-        x = self.projector(self.x_backbone(x))
-        y = self.projector(self.y_backbone(y))
+        x = self.projector(x)
+        y = self.projector(y)
         if self.return_embedding:
             return x, y
 
@@ -295,7 +295,7 @@ if __name__ == "__main__":
         action="store_true",
         help="share parameters of backbone",
     )
-    parser.add_argument("--epoch", type=int, action="store", dest="epoch", default=100, help="Epochs")
+    parser.add_argument("--epoch", type=int, action="store", dest="epoch", default=200, help="Epochs")
     parser.add_argument(
         "--label",
         type=str,

@@ -147,8 +147,7 @@ def get_backbones(args):
         fo=fo,
         De=args.De,
         Do=args.Do,
-        device=args.device,
-    )
+    ).to(args.device)
     y_backbone = InteractionNetTaggerEmbedding(
         dims=N_sv,
         features_dims=args.transform_inputs,
@@ -156,8 +155,7 @@ def get_backbones(args):
         fo=fo if args.shared else copy.deepcopy(fo),
         De=args.De,
         Do=args.Do,
-        device=args.device,
-    )
+    ).to(args.device)
     return x_backbone, y_backbone
 
 
@@ -239,8 +237,9 @@ def main(args):
             loss = model.forward(x, y)
             loss.backward()
             optimizer.step()
-            loss_train.append(loss.item())
-            pbar.set_description(f"Training loss: {loss.item():.4f}")
+            loss = loss.detach().cpu().item()
+            loss_train.append(loss)
+            pbar.set_description(f"Training loss: {loss:.4f}")
         model.eval()
         val_iterator = data_val.generate_data()
         pbar = tqdm.tqdm(val_iterator, total=val_its)
@@ -248,10 +247,10 @@ def main(args):
             (sub_X, _, _) = element
             x = torch.tensor(sub_X[2], dtype=torch.float, device=args.device)
             y = torch.tensor(sub_X[3], dtype=torch.float, device=args.device)
-            loss = model.forward(x, y)
-            loss_val.append(loss.item())
-            loss_val_epoch.append(loss.item())
-            pbar.set_description(f"Validation loss: {loss.item():.4f}")
+            loss = model.forward(x, y).cpu().item()
+            loss_val.append(loss)
+            loss_val_epoch.append(loss)
+            pbar.set_description(f"Validation loss: {loss:.4f}")
 
         l_val = np.mean(np.array(loss_val_epoch))
         if l_val < l_val_best:

@@ -167,8 +167,8 @@ def main(args):  # noqa: C901
             training_sv = sub_X[3]
             target = sub_Y[0]
 
-            trainingv = (torch.FloatTensor(training)).to(device)
-            trainingv_sv = (torch.FloatTensor(training_sv)).to(device)
+            trainingv = torch.tensor(training, dtype=torch.float, device=device)
+            trainingv_sv = torch.tensor(training_sv, dtype=torch.float, device=device)
             targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).to(device)
             optimizer.zero_grad()
             if args.load_vicreg_path:
@@ -204,8 +204,8 @@ def main(args):  # noqa: C901
             training_sv = sub_X[3]
             target = sub_Y[0]
 
-            trainingv = (torch.FloatTensor(training)).to(device)
-            trainingv_sv = (torch.FloatTensor(training_sv)).to(device)
+            trainingv = torch.tensor(training, dtype=torch.float, device=device)
+            trainingv_sv = torch.tensor(training_sv, dtype=torch.float, device=device)
             targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).to(device)
             if args.load_vicreg_path:
                 projector.eval()

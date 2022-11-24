@@ -1,6 +1,7 @@
 import argparse
 import copy
 import glob
+import json
 import os
 from pathlib import Path
 
@@ -176,6 +177,11 @@ def main(args):
     args.return_embedding = False
     args.return_representations = False
 
+    model_loc = f"{outdir}/trained_models/"
+    model_perf_loc = f"{outdir}/model_performances/"
+    model_dict_loc = f"{outdir}/model_dicts/"
+    os.system(f"mkdir -p {model_loc} {model_perf_loc} {model_dict_loc}")
+
     data_train = H5Data(
         batch_size=batch_size,
         cache=None,
@@ -203,6 +209,14 @@ def main(args):
 
     args.x_backbone, args.y_backbone = get_backbones(args)
     model = VICReg(args).to(args.device)
+
+    # Saving the model's metadata as a json dict
+    model_dict = {}
+    for arg in vars(args):
+        model_dict[arg] = getattr(args, arg)
+    f_model = open(f"{model_dict_loc}/vicreg_{label}_model_metadata.json", "w")
+    json.dump(model_dict, f_model, indent=3)
+    f_model.close()
 
     train_its = int(n_train / batch_size)
     val_its = int(n_val / batch_size)
@@ -243,14 +257,14 @@ def main(args):
         if l_val < l_val_best:
             print("New best model")
             l_val_best = l_val
-            torch.save(model.state_dict(), f"{outdir}/vicreg_{label}_best.pth")
-        torch.save(model.state_dict(), f"{outdir}/vicreg_{label}_last.pth")
+            torch.save(model.state_dict(), f"{model_loc}/vicreg_{label}_best.pth")
+        torch.save(model.state_dict(), f"{model_loc}/vicreg_{label}_last.pth")
         np.save(
-            f"{outdir}/vicreg_{label}_loss_train.npy",
+            f"{model_perf_loc}/vicreg_{label}_loss_train.npy",
             np.array(loss_train),
         )
         np.save(
-            f"{outdir}/vicreg_{label}_loss_val.npy",
+            f"{model_perf_loc}/vicreg_{label}_loss_val.npy",
             np.array(loss_val),
         )
 

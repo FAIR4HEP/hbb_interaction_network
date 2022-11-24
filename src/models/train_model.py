@@ -37,7 +37,6 @@ params_sv = defn["features_3"]
 
 
 def main(args):  # noqa: C901
-    model_dict = {}
 
     device = args.device
 
@@ -59,15 +58,16 @@ def main(args):  # noqa: C901
         label += "_just_tracks"
     n_epochs = args.epoch
     batch_size = args.batch_size
-    model_loc = "{}/trained_models/".format(outdir)
-    model_perf_loc = "{}/model_performances".format(outdir)
-    model_dict_loc = "{}/model_dicts".format(outdir)
-    os.system("mkdir -p {} {} {}".format(model_loc, model_perf_loc, model_dict_loc))
+    model_loc = f"{outdir}/trained_models/"
+    model_perf_loc = f"{outdir}/model_performances"
+    model_dict_loc = f"{outdir}/model_dicts"
+    os.system(f"mkdir -p {model_loc} {model_perf_loc} {model_dict_loc}")
 
     # Saving the model's metadata as a json dict
+    model_dict = {}
     for arg in vars(args):
         model_dict[arg] = getattr(args, arg)
-    f_model = open("{}/gnn_{}_model_metadata.json".format(model_dict_loc, label), "w")
+    f_model = open(f"{model_dict_loc}/gnn_{label}_model_metadata.json", "w")
     json.dump(model_dict, f_model, indent=3)
     f_model.close()
 
@@ -93,15 +93,15 @@ def main(args):  # noqa: C901
 
     n_val = data_val.count_data()
     n_train = data_train.count_data()
-    print("val data:", n_val)
-    print("train data:", n_train)
+    print(f"val data: {n_val}")
+    print(f"train data: {n_train}")
 
     if args.load_vicreg_path:
         args.x_inputs = len(params)
         args.y_inputs = len(params_sv)
         args.x_backbone, args.y_backbone = get_backbones(args)
         args.return_embedding = False
-        args.return_representations = False
+        args.return_representations = True
         model = VICReg(args).to(args.device)
         model.load_state_dict(torch.load(args.load_vicreg_path))
         model.eval()
@@ -140,14 +140,7 @@ def main(args):  # noqa: C901
         optimizer = optim.Adam(gnn.parameters(), lr=0.0001)
 
     loss = nn.CrossEntropyLoss(reduction="mean")
-    loss_vals_training = np.zeros(n_epochs)
-    loss_std_training = np.zeros(n_epochs)
-    loss_vals_validation = np.zeros(n_epochs)
-    loss_std_validation = np.zeros(n_epochs)
 
-    acc_vals_validation = np.zeros(n_epochs)
-
-    final_epoch = 0
     l_val_best = 99999
 
     from sklearn.metrics import accuracy_score
@@ -156,11 +149,10 @@ def main(args):  # noqa: C901
     import time
 
     for m in range(n_epochs):
-        print("Epoch %s\n" % m)
-        final_epoch = m
+        print(f"Epoch {m}\n")
         lst = []
         loss_val = []
-        loss_training = []
+        loss_train = []
         correct = []
         tic = time.perf_counter()
 
@@ -181,8 +173,8 @@ def main(args):  # noqa: C901
             optimizer.zero_grad()
             if args.load_vicreg_path:
                 projector.train()
-                embedding, embedding_sv = model(trainingv, trainingv_sv)
-                out = projector(torch.cat((embedding, embedding_sv), dim=-1))
+                representation, representation_sv = model(trainingv, trainingv_sv)
+                out = projector(torch.cat((representation, representation_sv), dim=-1))
             else:
                 gnn.train()
                 if just_svs:
@@ -192,7 +184,7 @@ def main(args):  # noqa: C901
                 else:
                     out = gnn(trainingv, trainingv_sv)
             batch_loss = loss(out, targetv)
-            loss_training.append(batch_loss.item())
+            loss_train.append(batch_loss.item())
             pbar.set_description(f"Training loss: {batch_loss.item():.4f}")
             batch_loss.backward()
             optimizer.step()
@@ -236,58 +228,58 @@ def main(args):  # noqa: C901
         l_val = np.mean(np.array(loss_val))
 
         predicted = np.concatenate(lst)
-        print("\nValidation Loss: ", l_val)
+        print(f"\nValidation Loss: {l_val}")
 
-        l_training = np.mean(np.array(loss_training))
-        print("Training Loss: ", l_training)
+        l_training = np.mean(np.array(loss_train))
+        print(f"Training Loss: {l_training}")
         val_targetv = np.concatenate(correct)
 
         if args.load_vicreg_path:
-            torch.save(projector.state_dict(), "%s/projector_%s_last.pth" % (model_loc, label))
+            torch.save(projector.state_dict(), f"{model_loc}/projector_{label}_last.pth")
         else:
-            torch.save(gnn.state_dict(), "%s/gnn_%s_last.pth" % (model_loc, label))
+            torch.save(gnn.state_dict(), f"{model_loc}/gnn_{label}_last.pth")
         if l_val < l_val_best:
             print("new best model")
             l_val_best = l_val
             if args.load_vicreg_path:
-                torch.save(projector.state_dict(), "%s/projector_%s_best.pth" % (model_loc, label))
+                torch.save(projector.state_dict(), f"{model_loc}/projector_{label}_best.pth")
+                np.save(
+                    f"{model_perf_loc}/projector_{label}_validation_target_vals.npy",
+                    val_targetv,
+                )
+                np.save(
+                    f"{model_perf_loc}/projector_{label}_validation_predicted_vals.npy",
+                    predicted,
+                )
+                np.save(
+                    f"{model_perf_loc}/projector_{label}_loss_train.npy",
+                    np.array(loss_train),
+                )
+                np.save(
+                    f"{model_perf_loc}/projector_{label}_loss_val.npy",
+                    np.array(loss_val),
+                )
             else:
-                torch.save(gnn.state_dict(), "%s/gnn_%s_best.pth" % (model_loc, label))
-            np.save(
-                "%s/validation_target_vals_%s.npy" % (model_perf_loc, label),
-                val_targetv,
-            )
-            np.save(
-                "%s/validation_predicted_vals_%s.npy" % (model_perf_loc, label),
-                predicted,
-            )
+                torch.save(gnn.state_dict(), f"{model_loc}/gnn_{label}_best.pth")
+                np.save(
+                    f"{model_perf_loc}/gnn_{label}_validation_target_vals.npy",
+                    val_targetv,
+                )
+                np.save(
+                    f"{model_perf_loc}/gnn_{label}_validation_predicted_vals.npy",
+                    predicted,
+                )
+                np.save(
+                    f"{model_perf_loc}/gnn_{label}_loss_train.npy",
+                    np.array(loss_train),
+                )
+                np.save(
+                    f"{model_perf_loc}/gnn_{label}_loss_val.npy",
+                    np.array(loss_val),
+                )
 
-        print(val_targetv.shape, predicted.shape)
-        print(val_targetv, predicted)
-        acc_vals_validation[m] = accuracy_score(val_targetv[:, 0], predicted[:, 0] > 0.5)
-        print("Validation Accuracy: ", acc_vals_validation[m])
-        loss_vals_training[m] = l_training
-        loss_vals_validation[m] = l_val
-        loss_std_validation[m] = np.std(np.array(loss_val))
-        loss_std_training[m] = np.std(np.array(loss_training))
-        if m > 8 and all(
-            loss_vals_validation[max(0, m - 8) : m] > min(np.append(loss_vals_validation[0 : max(0, m - 8)], 200))
-        ):
-            print("Early Stopping...")
-            print(loss_vals_training, "\n", np.diff(loss_vals_training))
-            break
-        print()
-
-    acc_vals_validation = acc_vals_validation[: (final_epoch + 1)]
-    loss_vals_training = loss_vals_training[: (final_epoch + 1)]
-    loss_vals_validation = loss_vals_validation[: (final_epoch + 1)]
-    loss_std_validation = loss_std_validation[: (final_epoch + 1)]
-    loss_std_training = loss_std_training[:(final_epoch)]
-    np.save("%s/acc_vals_validation_%s.npy" % (model_perf_loc, label), acc_vals_validation)
-    np.save("%s/loss_vals_training_%s.npy" % (model_perf_loc, label), loss_vals_training)
-    np.save("%s/loss_vals_validation_%s.npy" % (model_perf_loc, label), loss_vals_validation)
-    np.save("%s/loss_std_validation_%s.npy" % (model_perf_loc, label), loss_std_validation)
-    np.save("%s/loss_std_training_%s.npy" % (model_perf_loc, label), loss_std_training)
+        acc_val = accuracy_score(val_targetv[:, 0], predicted[:, 0] > 0.5)
+        print(f"Validation Accuracy: {acc_val}")
 
 
 if __name__ == "__main__":

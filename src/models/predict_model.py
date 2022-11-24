@@ -4,6 +4,8 @@ from pathlib import Path
 
 import numpy as np
 import torch
+import mplhep as hep
+import matplotlib.pyplot as plt
 
 if torch.cuda.is_available():
     import setGPU  # noqa: F401
@@ -11,10 +13,11 @@ if torch.cuda.is_available():
 import tqdm
 import yaml
 from scipy.special import softmax
-from sklearn.metrics import accuracy_score, roc_auc_score
+from sklearn.metrics import accuracy_score, roc_auc_score, roc_curve
 
 from src.models.InteractionNet import InteractionNetSingleTagger, InteractionNetTagger
 
+plt.style.use(hep.style.ROOT)
 project_dir = Path(__file__).resolve().parents[2]
 definitions = f"{project_dir}/src/data/definitions.yml"
 with open(definitions) as yaml_file:
@@ -160,6 +163,11 @@ def main(args, evaluating_test=True):  # noqa: C901
     acc = accuracy_score(target_test[idx][:, 1], prediction[idx][:, 1] >= 0.5)
     print("Accuray 1: ", acc)
 
+    fpr, tpr, thresholds = roc_curve(target_test[:, 1], prediction[:, 1])
+    plt.plot(tpr, fpr, label= f"AUC = {auc*100}%")
+    plt.semilogy()
+    plt.savefig("roc.pdf")
+    plt.savefig("roc.png")
 
 if __name__ == "__main__":
     """This is executed when run from the command line"""

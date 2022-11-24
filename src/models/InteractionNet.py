@@ -334,13 +334,13 @@ class InteractionNetTaggerEmbedding(nn.Module):
             self.Rs[s, i] = 1
 
     def edge_conv(self, x):
-        Orr = torch.matmul(x, self.Rr)  # [batch, P, Nr]
-        Ors = torch.matmul(x, self.Rs)  # [batch, P, Nr]
+        Orr = torch.matmul(x, self.Rr.to(device=x.device))  # [batch, P, Nr]
+        Ors = torch.matmul(x, self.Rs.to(device=x.device))  # [batch, P, Nr]
         B = torch.cat([Orr, Ors], dim=-2)  # [batch, 2*P, Nr]
         B = B.transpose(-1, -2).contiguous()  # [batch, Nr, 2*P]
         E = self.fr(B.view(-1, 2 * self.P)).view(-1, self.Nr, self.De)  # [batch, Nr, De]
         E = E.transpose(-1, -2).contiguous()  # [batch, De, Nr]
-        Ebar_pp = torch.einsum("bij,kj->bik", E, self.Rr)  # [batch, De, N]
+        Ebar_pp = torch.einsum("bij,kj->bik", E, self.Rr.to(device=x.device))  # [batch, De, N]
         return Ebar_pp
 
     def forward(self, x):  # [batch, P, N]

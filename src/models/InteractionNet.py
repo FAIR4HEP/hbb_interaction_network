@@ -214,7 +214,7 @@ class InteractionNetMergedTagger(nn.Module):
         # Final output matrix
         C = torch.cat([x, Ebar_pp], dim=-2)  # [batch, transform_dims + De, N]
         C = C.transpose(-1, -2).contiguous()  # [batch, N + Nv, transform_dims + De]
-        Omatrix = self.fo(C.view(-1, self.P + 2 * self.De)).view(-1, self.N, self.Do)  # [batch, N, Do]
+        Omatrix = self.fo(C.view(-1, self.transform_dims + self.De)).view(-1, self.N, self.Do)  # [batch, N, Do]
         Omatrix = Omatrix.transpose(-1, -2).contiguous()  # [batch, Do, N]
 
         # Taking the sum of over each particle/vertex
@@ -292,7 +292,7 @@ class InteractionNetSingleTagger(nn.Module):
         # Final output matrix
         C = torch.cat([x, Ebar_pp], dim=-2)  # [batch, P + De, N]
         C = C.transpose(-1, -2).contiguous()  # [batch, N, P + De]
-        Omatrix = self.fo(C.view(-1, self.P + 2 * self.De)).view(-1, self.N, self.Do)  # [batch, N, Do]
+        Omatrix = self.fo(C.view(-1, self.P + self.De)).view(-1, self.N, self.Do)  # [batch, N, Do]
         Omatrix = Omatrix.transpose(-1, -2).contiguous()  # [batch, Do, N]
 
         # Taking the sum of over each particle/vertex

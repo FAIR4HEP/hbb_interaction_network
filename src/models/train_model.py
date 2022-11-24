@@ -184,10 +184,11 @@ def main(args):  # noqa: C901
                 else:
                     out = gnn(trainingv, trainingv_sv)
             batch_loss = loss(out, targetv)
-            loss_train.append(batch_loss.item())
-            pbar.set_description(f"Training loss: {batch_loss.item():.4f}")
             batch_loss.backward()
             optimizer.step()
+            batch_loss = batch_loss.detach().cpu().item()
+            loss_train.append(batch_loss)
+            pbar.set_description(f"Training loss: {batch_loss:.4f}")
 
         toc = time.perf_counter()
         print(f"Training done in {toc - tic:0.4f} seconds")
@@ -219,10 +220,10 @@ def main(args):  # noqa: C901
                 else:
                     out = gnn(trainingv, trainingv_sv)
             lst.append(softmax(out).cpu().data.numpy())
-            l_val = loss(out, targetv)
-            loss_val.append(l_val.item())
-            pbar.set_description(f"Validation loss: {l_val.item():.4f}")
+            l_val = loss(out, targetv).cpu().item()
+            loss_val.append(l_val)
             correct.append(target)
+            pbar.set_description(f"Validation loss: {l_val:.4f}")
         toc = time.perf_counter()
         print(f"Evaluation done in {toc - tic:0.4f} seconds")
         l_val = np.mean(np.array(loss_val))

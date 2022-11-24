@@ -10,9 +10,10 @@ if torch.cuda.is_available():
 
 import tqdm
 import yaml
-from InteractionNet import InteractionNetSingleTagger, InteractionNetTagger
 from scipy.special import softmax
 from sklearn.metrics import accuracy_score, roc_auc_score
+
+from src.models.InteractionNet import InteractionNetSingleTagger, InteractionNetTagger
 
 project_dir = Path(__file__).resolve().parents[2]
 definitions = f"{project_dir}/src/data/definitions.yml"

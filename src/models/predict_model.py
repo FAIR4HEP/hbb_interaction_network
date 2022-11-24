@@ -1,11 +1,12 @@
 import argparse
 import glob
+import os
 from pathlib import Path
 
+import matplotlib.pyplot as plt
+import mplhep as hep
 import numpy as np
 import torch
-import mplhep as hep
-import matplotlib.pyplot as plt
 
 if torch.cuda.is_available():
     import setGPU  # noqa: F401
@@ -15,6 +16,7 @@ import yaml
 from scipy.special import softmax
 from sklearn.metrics import accuracy_score, roc_auc_score, roc_curve
 
+from src.data.h5data import H5Data
 from src.models.InteractionNet import InteractionNetSingleTagger, InteractionNetTagger
 
 plt.style.use(hep.style.ROOT)
@@ -34,40 +36,26 @@ params_sv = defn["features_3"]
 def main(args, evaluating_test=True):  # noqa: C901
 
     device = args.device
+    batch_size = args.batch_size
 
-    test_2 = []
-    test_3 = []
-    test_specs = []
-    target_tests = []
+    files_test = glob.glob(os.path.join(args.save_path, "newdata_*.h5"))
 
     if evaluating_test:
         dataset = "test"
     else:
         dataset = "train"
 
-    for test_file in sorted(glob.glob(f"{args.save_path}/{dataset}_*_features_2.npy")):
-        test_2.append(np.load(test_file))
-    test = np.concatenate(test_2)
-
-    for test_file in sorted(glob.glob(f"{args.save_path}/{dataset}_*_features_3.npy")):
-        test_3.append(np.load(test_file))
-    test_sv = np.concatenate(test_3)
-
-    for test_file in sorted(glob.glob(f"{args.save_path}/{dataset}_*_spectators.npy")):
-        test_specs.append(np.load(test_file))
-    test_spec = np.concatenate(test_specs)
-
-    for test_file in sorted(glob.glob(f"{args.save_path}/{dataset}_*_truth.npy")):
-        target_tests.append(np.load(test_file))
-    target_test = np.concatenate(target_tests)
-
-    fj_pt = test_spec[:, 0, 0]
-    fj_eta = test_spec[:, 0, 1]
-    fj_sdmass = test_spec[:, 0, 2]
-    if args.no_undef:
-        no_undef = np.sum(target_test, axis=1) == 1
-    else:
-        no_undef = fj_pt > -999  # no cut
+    data_test = H5Data(
+        batch_size=batch_size,
+        cache=None,
+        preloading=0,
+        features_name=f"{dataset}ing_subgroup",
+        labels_name="target_subgroup",
+        spectators_name="spectator_subgroup",
+    )
+    data_test.set_file_names(files_test)
+    n_test = data_test.count_data()
+    print(f"test data: {n_test}")
 
     min_pt = args.min_pt  # 300
     max_pt = args.max_pt  # 2000
@@ -75,26 +63,6 @@ def main(args, evaluating_test=True):  # noqa: C901
     max_eta = args.max_eta  # no cut
     min_msd = args.min_msd  # 40
     max_msd = args.max_msd  # 200
-
-    mask = (
-        (fj_sdmass > min_msd)
-        & (fj_sdmass < max_msd)
-        & (fj_eta > min_eta)
-        & (fj_eta < max_eta)
-        & (fj_pt > min_pt)
-        & (fj_pt < max_pt)
-        & no_undef
-    )
-    test = test[mask]
-    test_sv = test_sv[mask]
-    test_spec = test_spec[mask]
-    target_test = target_test[mask]
-
-    # Convert two sets into two branch with one set in both and one set in only one (Use for this file)
-    prediction = np.array([])
-
-    batch_size = args.batch_size
-    torch.cuda.empty_cache()
 
     if args.just_svs:
         gnn = InteractionNetSingleTagger(
@@ -128,24 +96,58 @@ def main(args, evaluating_test=True):  # noqa: C901
 
     gnn.load_state_dict(torch.load(args.load_path))
     gnn.eval()
-    print(sum(p.numel() for p in gnn.parameters() if p.requires_grad))
+    print(f"Parameters = {sum(p.numel() for p in gnn.parameters() if p.requires_grad)}")
 
-    for j in tqdm.tqdm(range(0, target_test.shape[0], batch_size)):
-        dummy_input_1 = torch.from_numpy(test[j : j + batch_size]).to(device)
-        dummy_input_2 = torch.from_numpy(test_sv[j : j + batch_size]).to(device)
+    # test process
+    iterator = data_test.generate_data()
+    total_ = int(n_test / batch_size)
+    pbar = tqdm.tqdm(iterator, total=total_)
+    for j, element in enumerate(pbar):
+        (sub_X, sub_Y, sub_Z) = element
+        training = sub_X[2]
+        training_sv = sub_X[3]
+        target = sub_Y[0]
+        spectator = sub_Z[0]
+
+        # mask away selection
+        fj_pt = spectator[:, 0, 0]
+        fj_eta = spectator[:, 0, 1]
+        fj_sdmass = spectator[:, 0, 2]
+        if args.no_undef:
+            no_undef = np.sum(target, axis=1) == 1
+        else:
+            no_undef = fj_pt > -999  # no cut
+        mask = (
+            (fj_sdmass > min_msd)
+            & (fj_sdmass < max_msd)
+            & (fj_eta > min_eta)
+            & (fj_eta < max_eta)
+            & (fj_pt > min_pt)
+            & (fj_pt < max_pt)
+            & no_undef
+        )
+        training = training[mask]
+        training_sv = training_sv[mask]
+        target = target[mask]
+        spectator = spectator[mask]
+
+        trainingv = torch.tensor(training, dtype=torch.float, device=device)
+        trainingv_sv = torch.tensor(training_sv, dtype=torch.float, device=device)
 
         if args.just_svs:
-            out_test = gnn(dummy_input_2)
+            out_test = gnn(trainingv_sv)
         elif args.just_tracks:
-            out_test = gnn(dummy_input_1)
+            out_test = gnn(trainingv)
         else:
-            out_test = gnn(dummy_input_1, dummy_input_2)
+            out_test = gnn(trainingv, trainingv_sv)
         out_test = out_test.cpu().data.numpy()
         out_test = softmax(out_test, axis=1)
         if j == 0:
             prediction = out_test
+            target_test = target
         else:
             prediction = np.concatenate((prediction, out_test), axis=0)
+            target_test = np.concatenate((target_test, target))
 
     auc = roc_auc_score(target_test[:, 1], prediction[:, 1])
     print("AUC: ", auc)
@@ -163,11 +165,38 @@ def main(args, evaluating_test=True):  # noqa: C901
     acc = accuracy_score(target_test[idx][:, 1], prediction[idx][:, 1] >= 0.5)
     print("Accuray 1: ", acc)
 
-    fpr, tpr, thresholds = roc_curve(target_test[:, 1], prediction[:, 1])
-    plt.plot(tpr, fpr, label= f"AUC = {auc*100}%")
+    def find_nearest(array, value):
+        idx = (np.abs(array - value)).argmin()
+        return idx
+
+    low_pu = "max_npv_15" in args.save_path
+
+    if low_pu:
+        pu_tag = r"$n_{{PV}} < 15$"
+        pu_label = "max_npv_15"
+    else:
+        pu_tag = r"$n_{{PV}} \geq 15$"
+        pu_label = "min_npv_15"
+
+    fpr, tpr, _ = roc_curve(target_test[:, 1], prediction[:, 1])
+    plabel = (
+        f"AUC = {auc*100:.1f}%, $\epsilon_S(\epsilon_B=10^{{-2}})$ = {tpr[find_nearest(fpr, 0.01)]*100:.1f}%"  # noqa: W605
+    )
+    plt.plot(tpr, fpr, label=plabel)
     plt.semilogy()
-    plt.savefig("roc.pdf")
-    plt.savefig("roc.png")
+    plt.legend(
+        title=(
+            f"${min_msd:.0f} < m_{{SD}} < {max_msd:.0f}$ GeV\n"
+            + f"${min_pt:.0f} < p_{{T}} < {max_pt:.0f}$ GeV\n"
+            + f"{pu_tag}"
+        ),
+    )
+    plt.xlabel(r"$H(b\bar{b})$ identification probability")
+    plt.ylabel("QCD misidentification probability")
+    plt.xlim([0, 1])
+    plt.ylim([1e-5, 1])
+    plt.savefig(f"roc_{pu_label}.png")
+
 
 if __name__ == "__main__":
     """This is executed when run from the command line"""

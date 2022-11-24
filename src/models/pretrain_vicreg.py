@@ -1,7 +1,6 @@
 import argparse
 import copy
 import glob
-import json
 import os
 from pathlib import Path
 
@@ -207,14 +206,6 @@ def main(args):
 
     args.x_backbone, args.y_backbone = get_backbones(args)
     model = VICReg(args).to(args.device)
-
-    # Saving the model's metadata as a json dict
-    model_dict = {}
-    for arg in vars(args):
-        model_dict[arg] = getattr(args, arg)
-    f_model = open(f"{model_dict_loc}/vicreg_{label}_model_metadata.json", "w")
-    json.dump(model_dict, f_model, indent=3)
-    f_model.close()
 
     train_its = int(n_train / batch_size)
     val_its = int(n_val / batch_size)

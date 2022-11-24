@@ -323,9 +323,9 @@ if __name__ == "__main__":
         default=False,
         help="Consider just tracks in model",
     )
-    parser.add_argument("--De", type=int, action="store", dest="De", default=20, help="De")
-    parser.add_argument("--Do", type=int, action="store", dest="Do", default=24, help="Do")
-    parser.add_argument("--hidden", type=int, action="store", dest="hidden", default=60, help="hidden")
+    parser.add_argument("--De", type=int, action="store", dest="De", default=32, help="De")
+    parser.add_argument("--Do", type=int, action="store", dest="Do", default=64, help="Do")
+    parser.add_argument("--hidden", type=int, action="store", dest="hidden", default=128, help="hidden")
     parser.add_argument("--epoch", type=int, action="store", dest="epoch", default=100, help="Epochs")
     parser.add_argument(
         "--label",

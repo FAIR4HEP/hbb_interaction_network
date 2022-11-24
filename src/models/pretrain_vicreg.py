@@ -68,8 +68,8 @@ class VICReg(nn.Module):
         y = self.y_transform(y.view(-1, self.args.y_inputs)).view(
             -1, self.N_y, self.args.transform_inputs
         )  # [batch, N_y, transform_inputs]
-        x = x.transpose(-1, -2).contiguous()  # [batch, x_inputs, N_x]
-        y = y.transpose(-1, -2).contiguous()  # [batch, y_inputs, N_y]
+        x = x.transpose(-1, -2).contiguous()  # [batch, transform_inputs, N_x]
+        y = y.transpose(-1, -2).contiguous()  # [batch, transform_inputs, N_y]
         x = self.x_backbone(x)
         y = self.y_backbone(y)
         if self.return_representations:
@@ -293,12 +293,12 @@ if __name__ == "__main__":
         type=int,
         action="store",
         dest="transform_inputs",
-        default=64,
+        default=32,
         help="transform_inputs",
     )
-    parser.add_argument("--De", type=int, action="store", dest="De", default=20, help="De")
-    parser.add_argument("--Do", type=int, action="store", dest="Do", default=24, help="Do")
-    parser.add_argument("--hidden", type=int, action="store", dest="hidden", default=60, help="hidden")
+    parser.add_argument("--De", type=int, action="store", dest="De", default=32, help="De")
+    parser.add_argument("--Do", type=int, action="store", dest="Do", default=64, help="Do")
+    parser.add_argument("--hidden", type=int, action="store", dest="hidden", default=128, help="hidden")
     parser.add_argument(
         "--shared",
         action="store_true",

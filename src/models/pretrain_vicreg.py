@@ -56,7 +56,7 @@ class VICReg(nn.Module):
         self.return_embedding = args.return_embedding
         self.return_representation = args.return_representation
         self.x_projector = Projector(args.mlp, self.embedding)
-        self.y_projector = self.x_projector if args.shared else copy.deepcopy(self.projector_x)
+        self.y_projector = self.x_projector if args.shared else copy.deepcopy(self.x_projector)
 
     def forward(self, x, y):
         # x: [batch, x_inputs, N_x]

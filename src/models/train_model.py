@@ -101,7 +101,7 @@ def main(args):  # noqa: C901
         args.y_inputs = len(params_sv)
         args.x_backbone, args.y_backbone = get_backbones(args)
         args.return_embedding = False
-        args.return_representations = True
+        args.return_representation = True
         model = VICReg(args).to(args.device)
         model.load_state_dict(torch.load(args.load_vicreg_path))
         model.eval()

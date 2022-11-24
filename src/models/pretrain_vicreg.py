@@ -54,6 +54,7 @@ class VICReg(nn.Module):
         self.N_y = self.y_backbone.N
         self.embedding = args.Do
         self.return_embedding = args.return_embedding
+        self.return_representation = args.return_representation
         self.projector = Projector(args.mlp, self.embedding)
 
     def forward(self, x, y):
@@ -71,7 +72,7 @@ class VICReg(nn.Module):
         y = y.transpose(-1, -2).contiguous()  # [batch, transform_inputs, N_y]
         x = self.x_backbone(x)
         y = self.y_backbone(y)
-        if self.return_representations:
+        if self.return_representation:
             return x, y
         x = self.projector(self.x_backbone(x))
         y = self.projector(self.y_backbone(y))
@@ -172,7 +173,7 @@ def main(args):
     outdir = args.outdir
     label = args.label
     args.return_embedding = False
-    args.return_representations = False
+    args.return_representation = False
 
     model_loc = f"{outdir}/trained_models/"
     model_perf_loc = f"{outdir}/model_performances/"

@@ -116,7 +116,7 @@ def main(args):  # noqa: C901
                 hidden=args.hidden,
                 De=args.De,
                 Do=args.Do,
-            )
+            ).to(device)
         elif just_tracks:
             gnn = InteractionNetSingleTagger(
                 dims=N,
@@ -125,7 +125,7 @@ def main(args):  # noqa: C901
                 hidden=args.hidden,
                 De=args.De,
                 Do=args.Do,
-            )
+            ).to(device)
         else:
             gnn = InteractionNetTagger(
                 pf_dims=N,
@@ -136,7 +136,7 @@ def main(args):  # noqa: C901
                 hidden=args.hidden,
                 De=args.De,
                 Do=args.Do,
-            )
+            ).to(device)
         optimizer = optim.Adam(gnn.parameters(), lr=0.0001)
 
     loss = nn.CrossEntropyLoss(reduction="mean")

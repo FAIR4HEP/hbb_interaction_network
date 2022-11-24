@@ -72,16 +72,19 @@ def main(args, evaluating_test=True):  # noqa: C901
     min_msd = args.min_msd  # 40
     max_msd = args.max_msd  # 200
 
-    for array in [test, test_sv, test_spec, target_test]:
-        array = array[
-            (fj_sdmass > min_msd)
-            & (fj_sdmass < max_msd)
-            & (fj_eta > min_eta)
-            & (fj_eta < max_eta)
-            & (fj_pt > min_pt)
-            & (fj_pt < max_pt)
-            & no_undef
-        ]
+    mask = (
+        (fj_sdmass > min_msd)
+        & (fj_sdmass < max_msd)
+        & (fj_eta > min_eta)
+        & (fj_eta < max_eta)
+        & (fj_pt > min_pt)
+        & (fj_pt < max_pt)
+        & no_undef
+    )
+    test = test[mask]
+    test_sv = test_sv[mask]
+    test_spec = test_spec[mask]
+    target_test = target_test[mask]
 
     # Convert two sets into two branch with one set in both and one set in only one (Use for this file)
     prediction = np.array([])
@@ -97,8 +100,7 @@ def main(args, evaluating_test=True):  # noqa: C901
             hidden=args.hidden,
             De=args.De,
             Do=args.Do,
-            device=device,
-        )
+        ).to(device)
     elif args.just_tracks:
         gnn = InteractionNetSingleTagger(
             dims=N,
@@ -107,8 +109,7 @@ def main(args, evaluating_test=True):  # noqa: C901
             hidden=args.hidden,
             De=args.De,
             Do=args.Do,
-            device=device,
-        )
+        ).to(device)
     else:
         gnn = InteractionNetTagger(
             pf_dims=N,
@@ -119,8 +120,7 @@ def main(args, evaluating_test=True):  # noqa: C901
             hidden=args.hidden,
             De=args.De,
             Do=args.Do,
-            device=device,
-        )
+        ).to(device)
 
     gnn.load_state_dict(torch.load(args.load_path))
     gnn.eval()

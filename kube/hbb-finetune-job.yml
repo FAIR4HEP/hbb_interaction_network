@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: hbb-job-train-track-sv
+  name: hbb-job-finetune
   labels:
     jobgroup: hbb-job
 spec:

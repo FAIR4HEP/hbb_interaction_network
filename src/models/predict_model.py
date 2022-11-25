@@ -18,6 +18,7 @@ from sklearn.metrics import accuracy_score, roc_auc_score, roc_curve
 
 from src.data.h5data import H5Data
 from src.models.InteractionNet import InteractionNetSingleTagger, InteractionNetTagger
+from src.models.pretrain_vicreg import Projector, VICReg, get_backbones
 
 plt.style.use(hep.style.ROOT)
 project_dir = Path(__file__).resolve().parents[2]
@@ -57,46 +58,56 @@ def main(args, evaluating_test=True):  # noqa: C901
     n_test = data_test.count_data()
     print(f"test data: {n_test}")
 
-    min_pt = args.min_pt  # 300
-    max_pt = args.max_pt  # 2000
-    min_eta = args.min_eta  # no cut
-    max_eta = args.max_eta  # no cut
-    min_msd = args.min_msd  # 40
-    max_msd = args.max_msd  # 200
+    min_pt = args.min_pt
+    max_pt = args.max_pt
+    min_eta = args.min_eta
+    max_eta = args.max_eta
+    min_msd = args.min_msd
+    max_msd = args.max_msd
 
-    if args.just_svs:
-        gnn = InteractionNetSingleTagger(
-            dims=N_sv,
-            num_classes=n_targets,
-            features_dims=len(params_sv),
-            hidden=args.hidden,
-            De=args.De,
-            Do=args.Do,
-        ).to(device)
-    elif args.just_tracks:
-        gnn = InteractionNetSingleTagger(
-            dims=N,
-            num_classes=n_targets,
-            features_dims=len(params),
-            hidden=args.hidden,
-            De=args.De,
-            Do=args.Do,
-        ).to(device)
+    if args.load_vicreg_path:
+        args.x_inputs = len(params)
+        args.y_inputs = len(params_sv)
+        args.x_backbone, args.y_backbone = get_backbones(args)
+        args.return_embedding = False
+        args.return_representation = True
+        vicreg = VICReg(args).to(args.device)
+        vicreg.load_state_dict(torch.load(args.load_vicreg_path))
+        vicreg.eval()
+        model = Projector(args.finetune_mlp, 2 * vicreg.x_backbone.Do).to(device)
     else:
-        gnn = InteractionNetTagger(
-            pf_dims=N,
-            sv_dims=N_sv,
-            num_classes=n_targets,
-            pf_features_dims=len(params),
-            sv_features_dims=len(params_sv),
-            hidden=args.hidden,
-            De=args.De,
-            Do=args.Do,
-        ).to(device)
-
-    gnn.load_state_dict(torch.load(args.load_path))
-    gnn.eval()
-    print(f"Parameters = {sum(p.numel() for p in gnn.parameters() if p.requires_grad)}")
+        if args.just_svs:
+            model = InteractionNetSingleTagger(
+                dims=N_sv,
+                num_classes=n_targets,
+                features_dims=len(params_sv),
+                hidden=args.hidden,
+                De=args.De,
+                Do=args.Do,
+            ).to(device)
+        elif args.just_tracks:
+            model = InteractionNetSingleTagger(
+                dims=N,
+                num_classes=n_targets,
+                features_dims=len(params),
+                hidden=args.hidden,
+                De=args.De,
+                Do=args.Do,
+            ).to(device)
+        else:
+            model = InteractionNetTagger(
+                pf_dims=N,
+                sv_dims=N_sv,
+                num_classes=n_targets,
+                pf_features_dims=len(params),
+                sv_features_dims=len(params_sv),
+                hidden=args.hidden,
+                De=args.De,
+                Do=args.Do,
+            ).to(device)
+    model.load_state_dict(torch.load(args.load_path))
+    model.eval()
+    print(f"Parameters = {sum(p.numel() for p in model.parameters() if p.requires_grad)}")
 
     # test process
     iterator = data_test.generate_data()
@@ -134,12 +145,16 @@ def main(args, evaluating_test=True):  # noqa: C901
         trainingv = torch.tensor(training, dtype=torch.float, device=device)
         trainingv_sv = torch.tensor(training_sv, dtype=torch.float, device=device)
 
-        if args.just_svs:
-            out_test = gnn(trainingv_sv)
-        elif args.just_tracks:
-            out_test = gnn(trainingv)
+        if args.load_vicreg_path:
+            representation, representation_sv = vicreg(trainingv, trainingv_sv)
+            out_test = model(torch.cat((representation, representation_sv), dim=-1))
         else:
-            out_test = gnn(trainingv, trainingv_sv)
+            if args.just_svs:
+                out_test = model(trainingv_sv)
+            elif args.just_tracks:
+                out_test = model(trainingv)
+            else:
+                out_test = model(trainingv, trainingv_sv)
         out_test = out_test.cpu().data.numpy()
         out_test = softmax(out_test, axis=1)
         if j == 0:
@@ -214,28 +229,28 @@ if __name__ == "__main__":
         "--min-msd",
         type=float,
         action="store",
-        default=-999.0,
+        default=40.0,
         help="Min mSD for evaluation",
     )
     parser.add_argument(
         "--max-msd",
         type=float,
         action="store",
-        default=9999.0,
+        default=200.0,
         help="Max mSD for evaluation",
     )
     parser.add_argument(
         "--min-pt",
         type=float,
         action="store",
-        default=-999.0,
+        default=300.0,
         help="Min pT for evaluation",
     )
     parser.add_argument(
         "--max-pt",
         type=float,
         action="store",
-        default=99999.0,
+        default=2000.0,
         help="Max pT for evaluation",
     )
     parser.add_argument(
@@ -268,7 +283,7 @@ if __name__ == "__main__":
         action="store",
         dest="device",
         default="cpu",
-        help="device to train gnn; follow pytorch convention",
+        help="device to evaluate model; follow pytorch convention",
     )
     parser.add_argument(
         "--no-undef",
@@ -283,6 +298,13 @@ if __name__ == "__main__":
         help="Load weights from model if enabled",
     )
     parser.add_argument(
+        "--load-vicreg-path",
+        type=str,
+        action="store",
+        default=None,
+        help="Load weights from vicreg model if enabled",
+    )
+    parser.add_argument(
         "--just-svs",
         action="store_true",
         default=False,
@@ -293,6 +315,29 @@ if __name__ == "__main__":
         action="store_true",
         default=False,
         help="Consider just tracks in model",
+    )
+    parser.add_argument(
+        "--shared",
+        action="store_true",
+        help="share parameters of backbone",
+    )
+    parser.add_argument(
+        "--transform-inputs",
+        type=int,
+        action="store",
+        dest="transform_inputs",
+        default=32,
+        help="transform_inputs",
+    )
+    parser.add_argument(
+        "--mlp",
+        default="256-256-256",
+        help="Size and number of layers of the MLP expander head",
+    )
+    parser.add_argument(
+        "--finetune-mlp",
+        default="256-256-2",
+        help="Size and number of layers of the MLP finetuning head",
     )
 
     args = parser.parse_args()

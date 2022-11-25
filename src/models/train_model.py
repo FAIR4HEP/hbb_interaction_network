@@ -51,6 +51,11 @@ def main(args):  # noqa: C901
     just_svs = args.just_svs
     just_tracks = args.just_tracks
 
+    if args.load_vicreg_path:
+        model_type = "projector"
+    else:
+        model_type = "gnn"
+
     label = args.label
     if just_svs:
         label += "_just_svs"
@@ -67,7 +72,7 @@ def main(args):  # noqa: C901
     model_dict = {}
     for arg in vars(args):
         model_dict[arg] = getattr(args, arg)
-    f_model = open(f"{model_dict_loc}/gnn_{label}_model_metadata.json", "w")
+    f_model = open(f"{model_dict_loc}/{model_type}_{label}_model_metadata.json", "w")
     json.dump(model_dict, f_model, indent=3)
     f_model.close()
 
@@ -102,14 +107,14 @@ def main(args):  # noqa: C901
         args.x_backbone, args.y_backbone = get_backbones(args)
         args.return_embedding = False
         args.return_representation = True
-        model = VICReg(args).to(args.device)
-        model.load_state_dict(torch.load(args.load_vicreg_path))
-        model.eval()
-        projector = Projector(args.finetune_mlp, 2 * model.Do).to(args.device)
-        optimizer = optim.Adam(projector.parameters(), lr=0.0001)
+        vicreg = VICReg(args).to(args.device)
+        vicreg.load_state_dict(torch.load(args.load_vicreg_path))
+        vicreg.eval()
+        model = Projector(args.finetune_mlp, 2 * vicreg.x_backbone.Do).to(args.device)
+        optimizer = optim.Adam(model.parameters(), lr=0.0001)
     else:
         if just_svs:
-            gnn = InteractionNetSingleTagger(
+            model = InteractionNetSingleTagger(
                 dims=N_sv,
                 num_classes=n_targets,
                 features_dims=len(params_sv),
@@ -118,7 +123,7 @@ def main(args):  # noqa: C901
                 Do=args.Do,
             ).to(device)
         elif just_tracks:
-            gnn = InteractionNetSingleTagger(
+            model = InteractionNetSingleTagger(
                 dims=N,
                 num_classes=n_targets,
                 features_dims=len(params),
@@ -127,7 +132,7 @@ def main(args):  # noqa: C901
                 Do=args.Do,
             ).to(device)
         else:
-            gnn = InteractionNetTagger(
+            model = InteractionNetTagger(
                 pf_dims=N,
                 sv_dims=N_sv,
                 num_classes=n_targets,
@@ -137,7 +142,7 @@ def main(args):  # noqa: C901
                 De=args.De,
                 Do=args.Do,
             ).to(device)
-        optimizer = optim.Adam(gnn.parameters(), lr=0.0001)
+        optimizer = optim.Adam(model.parameters(), lr=0.0001)
 
     loss = nn.CrossEntropyLoss(reduction="mean")
 
@@ -172,17 +177,17 @@ def main(args):  # noqa: C901
             targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).to(device)
             optimizer.zero_grad()
             if args.load_vicreg_path:
-                projector.train()
-                representation, representation_sv = model(trainingv, trainingv_sv)
-                out = projector(torch.cat((representation, representation_sv), dim=-1))
+                model.train()
+                representation, representation_sv = vicreg(trainingv, trainingv_sv)
+                out = model(torch.cat((representation, representation_sv), dim=-1))
             else:
-                gnn.train()
+                model.train()
                 if just_svs:
-                    out = gnn(trainingv_sv)
+                    out = model(trainingv_sv)
                 elif just_tracks:
-                    out = gnn(trainingv)
+                    out = model(trainingv)
                 else:
-                    out = gnn(trainingv, trainingv_sv)
+                    out = model(trainingv, trainingv_sv)
             batch_loss = loss(out, targetv)
             batch_loss.backward()
             optimizer.step()
@@ -208,17 +213,17 @@ def main(args):  # noqa: C901
             trainingv_sv = torch.tensor(training_sv, dtype=torch.float, device=device)
             targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).to(device)
             if args.load_vicreg_path:
-                projector.eval()
-                embedding, embedding_sv = model(trainingv, trainingv_sv)
-                out = projector(torch.cat((embedding, embedding_sv), dim=-1))
+                model.eval()
+                representation, representation_sv = vicreg(trainingv, trainingv_sv)
+                out = model(torch.cat((representation, representation_sv), dim=-1))
             else:
-                gnn.eval()
+                model.eval()
                 if just_svs:
-                    out = gnn(trainingv_sv)
+                    out = model(trainingv_sv)
                 elif just_tracks:
-                    out = gnn(trainingv)
+                    out = model(trainingv)
                 else:
-                    out = gnn(trainingv, trainingv_sv)
+                    out = model(trainingv, trainingv_sv)
             lst.append(softmax(out).cpu().data.numpy())
             l_val = loss(out, targetv).cpu().item()
             loss_val.append(l_val)
@@ -235,49 +240,27 @@ def main(args):  # noqa: C901
         print(f"Training Loss: {l_training}")
         val_targetv = np.concatenate(correct)
 
-        if args.load_vicreg_path:
-            torch.save(projector.state_dict(), f"{model_loc}/projector_{label}_last.pth")
-        else:
-            torch.save(gnn.state_dict(), f"{model_loc}/gnn_{label}_last.pth")
+        torch.save(model.state_dict(), f"{model_loc}/{model_type}_{label}_last.pth")
         if l_val < l_val_best:
             print("new best model")
             l_val_best = l_val
-            if args.load_vicreg_path:
-                torch.save(projector.state_dict(), f"{model_loc}/projector_{label}_best.pth")
-                np.save(
-                    f"{model_perf_loc}/projector_{label}_validation_target_vals.npy",
-                    val_targetv,
-                )
-                np.save(
-                    f"{model_perf_loc}/projector_{label}_validation_predicted_vals.npy",
-                    predicted,
-                )
-                np.save(
-                    f"{model_perf_loc}/projector_{label}_loss_train.npy",
-                    np.array(loss_train),
-                )
-                np.save(
-                    f"{model_perf_loc}/projector_{label}_loss_val.npy",
-                    np.array(loss_val),
-                )
-            else:
-                torch.save(gnn.state_dict(), f"{model_loc}/gnn_{label}_best.pth")
-                np.save(
-                    f"{model_perf_loc}/gnn_{label}_validation_target_vals.npy",
-                    val_targetv,
-                )
-                np.save(
-                    f"{model_perf_loc}/gnn_{label}_validation_predicted_vals.npy",
-                    predicted,
-                )
-                np.save(
-                    f"{model_perf_loc}/gnn_{label}_loss_train.npy",
-                    np.array(loss_train),
-                )
-                np.save(
-                    f"{model_perf_loc}/gnn_{label}_loss_val.npy",
-                    np.array(loss_val),
-                )
+            torch.save(model.state_dict(), f"{model_loc}/{model_type}_{label}_best.pth")
+            np.save(
+                f"{model_perf_loc}/{model_type}_{label}_validation_target_vals.npy",
+                val_targetv,
+            )
+            np.save(
+                f"{model_perf_loc}/{model_type}_{label}_validation_predicted_vals.npy",
+                predicted,
+            )
+            np.save(
+                f"{model_perf_loc}/{model_type}_{label}_loss_train.npy",
+                np.array(loss_train),
+            )
+            np.save(
+                f"{model_perf_loc}/{model_type}_{label}_loss_val.npy",
+                np.array(loss_val),
+            )
 
         acc_val = accuracy_score(val_targetv[:, 0], predicted[:, 0] > 0.5)
         print(f"Validation Accuracy: {acc_val}")
@@ -349,7 +332,7 @@ if __name__ == "__main__":
         action="store",
         dest="device",
         default="cuda",
-        help="device to train gnn; follow pytorch convention",
+        help="device to train model; follow pytorch convention",
     )
     parser.add_argument(
         "--load-vicreg-path",
@@ -368,7 +351,7 @@ if __name__ == "__main__":
         type=int,
         action="store",
         dest="transform_inputs",
-        default=64,
+        default=32,
         help="transform_inputs",
     )
 

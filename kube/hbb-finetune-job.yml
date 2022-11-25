@@ -1,0 +1,39 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: hbb-job-train-track-sv
+  labels:
+    jobgroup: hbb-job
+spec:
+  template:
+    spec:
+      containers:
+      - name: testing
+        image: gitlab-registry.nrp-nautilus.io/jmduarte/hbb_interaction_network:latest
+        command: ["/bin/bash"]
+        args:
+        - -c
+        - >-
+            cd /ssl-jet-vol/hbb_interaction_network &&
+            git checkout vicreg &&
+            git pull &&
+            pip install -e . &&
+            python -m src.models.train_model --batch-size 512 --epoch 200 --label max_npv_15 --train-path /ssl-jet-vol/hbb_interaction_network/data/processed/max_npv_15/train/ --load-vicreg-path /ssl-jet-vol/hbb_interaction_network/models/trained_models/vicreg_min_npv_15_best.pth
+        volumeMounts:
+        - mountPath: /ssl-jet-vol
+          name: ssl-jet-vol
+        resources:
+          limits:
+            memory: 64Gi
+            cpu: "8"
+            nvidia.com/gpu: "1"
+          requests:
+            memory: 32Gi
+            cpu: "4"
+            nvidia.com/gpu: "1"
+      volumes:
+      - name: ssl-jet-vol
+        persistentVolumeClaim:
+          claimName: ssl-jet-vol
+      restartPolicy: Never
+  backoffLimit: 5

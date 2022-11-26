@@ -112,9 +112,9 @@ def main(args):  # noqa: C901
         vicreg.eval()
         model = Projector(args.finetune_mlp, 2 * vicreg.x_backbone.Do).to(args.device)
         if args.finetune:
-            optimizer = optim.Adam(vicreg.parameters() + model.parameters(), lr=0.0001)
+            optimizer = optim.Adam([{"params": model.parameters()}, {"params": vicreg.parameters(), "lr": 1e-6}], lr=1e-4)
         else:
-            optimizer = optim.Adam(model.parameters(), lr=0.0001)
+            optimizer = optim.Adam(model.parameters(), lr=1e-4)
     else:
         if just_svs:
             model = InteractionNetSingleTagger(

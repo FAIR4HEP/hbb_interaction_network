@@ -3,8 +3,6 @@ import glob
 import os
 from pathlib import Path
 
-import matplotlib.pyplot as plt
-import mplhep as hep
 import numpy as np
 import torch
 
@@ -20,7 +18,6 @@ from src.data.h5data import H5Data
 from src.models.InteractionNet import InteractionNetSingleTagger, InteractionNetTagger
 from src.models.pretrain_vicreg import Projector, VICReg, get_backbones
 
-plt.style.use(hep.style.ROOT)
 project_dir = Path(__file__).resolve().parents[2]
 definitions = f"{project_dir}/src/data/definitions.yml"
 with open(definitions) as yaml_file:
@@ -180,37 +177,27 @@ def main(args, evaluating_test=True):  # noqa: C901
     acc = accuracy_score(target_test[idx][:, 1], prediction[idx][:, 1] >= 0.5)
     print("Accuray 1: ", acc)
 
-    def find_nearest(array, value):
-        idx = (np.abs(array - value)).argmin()
-        return idx
-
     low_pu = "max_npv_15" in args.save_path
 
     if low_pu:
-        pu_tag = r"$n_{{PV}} < 15$"
         pu_label = "max_npv_15"
     else:
-        pu_tag = r"$n_{{PV}} \geq 15$"
         pu_label = "min_npv_15"
 
     fpr, tpr, _ = roc_curve(target_test[:, 1], prediction[:, 1])
-    plabel = (
-        f"AUC = {auc*100:.1f}%, $\epsilon_S(\epsilon_B=10^{{-2}})$ = {tpr[find_nearest(fpr, 0.01)]*100:.1f}%"  # noqa: W605
+
+    model_perf_loc = f"{args.outdir}/model_performances"
+    os.makedirs(model_perf_loc, exist_ok=True)
+    model_name = Path(args.load_path).stem
+
+    np.save(
+        f"{model_perf_loc}/{model_name}_test_fpr_{pu_label}.npy",
+        fpr,
     )
-    plt.plot(tpr, fpr, label=plabel)
-    plt.semilogy()
-    plt.legend(
-        title=(
-            f"${min_msd:.0f} < m_{{SD}} < {max_msd:.0f}$ GeV\n"
-            + f"${min_pt:.0f} < p_{{T}} < {max_pt:.0f}$ GeV\n"
-            + f"{pu_tag}"
-        ),
+    np.save(
+        f"{model_perf_loc}/{model_name}_test_tpr_{pu_label}.npy",
+        tpr,
     )
-    plt.xlabel(r"$H(b\bar{b})$ identification probability")
-    plt.ylabel("QCD misidentification probability")
-    plt.xlim([0, 1])
-    plt.ylim([1e-5, 1])
-    plt.savefig(f"roc_{pu_label}.png")
 
 
 if __name__ == "__main__":
@@ -224,6 +211,14 @@ if __name__ == "__main__":
         action="store",
         default=f"{project_dir}/data/processed/test/",
         help="Input directory with testing files",
+    )
+    parser.add_argument(
+        "--outdir",
+        type=str,
+        action="store",
+        dest="outdir",
+        default=f"{project_dir}/models/",
+        help="Output directory",
     )
     parser.add_argument(
         "--min-msd",

@@ -111,7 +111,10 @@ def main(args):  # noqa: C901
         vicreg.load_state_dict(torch.load(args.load_vicreg_path))
         vicreg.eval()
         model = Projector(args.finetune_mlp, 2 * vicreg.x_backbone.Do).to(args.device)
-        optimizer = optim.Adam(model.parameters(), lr=0.0001)
+        if args.finetune:
+            optimizer = optim.Adam(vicreg.parameters() + model.parameters(), lr=0.0001)
+        else:
+            optimizer = optim.Adam(model.parameters(), lr=0.0001)
     else:
         if just_svs:
             model = InteractionNetSingleTagger(
@@ -271,7 +274,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--finetune-mlp",
-        default="256-256-2",
+        default="2",
         help="Size and number of layers of the MLP finetuning head",
     )
     parser.add_argument(
@@ -340,6 +343,11 @@ if __name__ == "__main__":
         action="store",
         default=None,
         help="Load weights from vicreg model if enabled",
+    )
+    parser.add_argument(
+        "--finetune",
+        action="store_true",
+        help="finetune vicreg model",
     )
     parser.add_argument(
         "--shared",

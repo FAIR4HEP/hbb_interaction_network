@@ -17,15 +17,17 @@ if __name__ == "__main__":
         "gnn_max_npv_15_best",
         "gnn_max_npv_15_just_tracks_best",
         "gnn_max_npv_15_just_svs_best",
-        "projector_max_npv_15_best",
+        "projector_linear_max_npv_15_best",
+        "projector_finetune_max_npv_15_best",
     ]
     model_labels = [
         "IN(particles, SVs)",
         "IN(particles)",
         "IN(SVs)",
-        "VICReg+MLP(particles, SVs)",
+        "VICReg+Linear(particles, SVs)",
+        "Finetuned VICReg+Linear(particles, SVs)",
     ]
-    lines = ["-", "--", "-.", ":"]
+    lines = ["-", "--", "-.", ":", "--."]
     pu_label = "min_npv_15"  # max_npv_15
     min_msd = 40.0
     max_msd = 200.0

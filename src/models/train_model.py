@@ -109,11 +109,11 @@ def main(args):  # noqa: C901
         args.return_representation = True
         vicreg = VICReg(args).to(args.device)
         vicreg.load_state_dict(torch.load(args.load_vicreg_path))
-        vicreg.eval()
         model = Projector(args.finetune_mlp, 2 * vicreg.x_backbone.Do).to(args.device)
         if args.finetune:
             optimizer = optim.Adam([{"params": model.parameters()}, {"params": vicreg.parameters(), "lr": 1e-6}], lr=1e-4)
         else:
+            vicreg.eval()
             optimizer = optim.Adam(model.parameters(), lr=1e-4)
     else:
         if just_svs:
@@ -180,6 +180,8 @@ def main(args):  # noqa: C901
             targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).to(device)
             optimizer.zero_grad()
             if args.load_vicreg_path:
+                if args.finetune:
+                    vicreg.train()
                 model.train()
                 representation, representation_sv = vicreg(trainingv, trainingv_sv)
                 out = model(torch.cat((representation, representation_sv), dim=-1))
@@ -216,6 +218,8 @@ def main(args):  # noqa: C901
             trainingv_sv = torch.tensor(training_sv, dtype=torch.float, device=device)
             targetv = (torch.from_numpy(np.argmax(target, axis=1)).long()).to(device)
             if args.load_vicreg_path:
+                if args.finetune:
+                    vicreg.eval()
                 model.eval()
                 representation, representation_sv = vicreg(trainingv, trainingv_sv)
                 out = model(torch.cat((representation, representation_sv), dim=-1))
@@ -243,10 +247,16 @@ def main(args):  # noqa: C901
         print(f"Training Loss: {l_training}")
         val_targetv = np.concatenate(correct)
 
+        if args.finetune:
+            vicreg_model = Path(args.load_vicreg_path).stem
+            torch.save(vicreg.state_dict(), f"{model_loc}/{vicreg_model}_finetune_last.pth")
         torch.save(model.state_dict(), f"{model_loc}/{model_type}_{label}_last.pth")
         if l_val < l_val_best:
             print("new best model")
             l_val_best = l_val
+            if args.finetune:
+                vicreg_model = Path(args.load_vicreg_path).stem
+                torch.save(vicreg.state_dict(), f"{model_loc}/{vicreg_model}_finetune_best.pth")
             torch.save(model.state_dict(), f"{model_loc}/{model_type}_{label}_best.pth")
             np.save(
                 f"{model_perf_loc}/{model_type}_{label}_validation_target_vals.npy",

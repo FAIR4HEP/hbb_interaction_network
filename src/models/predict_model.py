@@ -331,7 +331,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--finetune-mlp",
-        default="256-256-2",
+        default="2",
         help="Size and number of layers of the MLP finetuning head",
     )
 

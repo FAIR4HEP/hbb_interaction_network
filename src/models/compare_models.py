@@ -27,7 +27,7 @@ if __name__ == "__main__":
         "VICReg+Linear(particles, SVs)",
         "Finetuned VICReg+Linear(particles, SVs)",
     ]
-    lines = ["-", "--", "-.", ":", "--."]
+    lines = ["-", "--", "-.", ":", (0, (1, 10))]
     pu_label = "min_npv_15"  # max_npv_15
     min_msd = 40.0
     max_msd = 200.0

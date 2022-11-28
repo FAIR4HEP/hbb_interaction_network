@@ -11,6 +11,7 @@ import uproot
 import yaml
 
 project_dir = Path(__file__).resolve().parents[2]
+np.random.seed(42)
 
 
 def to_np_array(ak_array, maxN=100, pad=0, dtype=float):
@@ -30,8 +31,9 @@ def to_np_array(ak_array, maxN=100, pad=0, dtype=float):
 @click.option("--max-entries", show_default=True, default=None, type=int)
 @click.option("--min-npv", show_default=True, default=-1, type=int)
 @click.option("--max-npv", show_default=True, default=9999, type=int)
+@click.option("--keep-frac", show_default=True, default=1, type=float)
 @click.option("--batch-size", show_default=True, default=None, type=int)
-def main(definitions, train, test, outdir, max_entries, min_npv, max_npv, batch_size):  # noqa: C901
+def main(definitions, train, test, outdir, max_entries, min_npv, max_npv, keep_frac, batch_size):  # noqa: C901
     """Runs data processing scripts to turn raw data from (../raw) into
     cleaned data ready to be analyzed (saved in ../processed).
     """
@@ -70,7 +72,9 @@ def main(definitions, train, test, outdir, max_entries, min_npv, max_npv, batch_
                 logger.info(f"{outdir}/{dataset}/newdata_{counter}.h5 exists... skipping")
                 continue
             arrays = tree.arrays(spectators, library="np", entry_start=k, entry_stop=k + batch_size)
-            mask = (arrays["npv"] >= min_npv) & (arrays["npv"] < max_npv)
+            mask = (
+                (arrays["npv"] >= min_npv) & (arrays["npv"] < max_npv) & (np.random.rand(*arrays["npv"].shape) < keep_frac)
+            )
             spec_array = np.expand_dims(np.stack([arrays[spec][mask] for spec in spectators], axis=1), axis=1)
             real_batch_size = spec_array.shape[0]
             total_entries += real_batch_size

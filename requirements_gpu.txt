@@ -10,7 +10,7 @@ flake8
 # local package
 # git+https://github.com/fair4hep/hbb_interaction_network@main
 h5py
-mphelp
+mplhep
 numpy
 # nvidia-tensorrt
 onnx

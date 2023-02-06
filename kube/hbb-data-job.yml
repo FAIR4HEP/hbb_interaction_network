@@ -1,0 +1,38 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: hbb-job-test-min-npv-15
+  labels:
+    jobgroup: hbb-job
+spec:
+  template:
+    spec:
+      containers:
+      - name: testing
+        image: gitlab-registry.nrp-nautilus.io/jmduarte/hbb_interaction_network:latest
+        command: ["/bin/bash"]
+        args:
+        - -c
+        - >-
+            git clone https://github.com/ucsd-hep-ex/hbb_interaction_network --single-branch -b vicreg &&
+            cd hbb_interaction_network &&
+            pip install -e . &&
+            python -m src.data.make_dataset --test --batch-size 200000 --min-npv 15 --outdir /ssl-jet-vol/hbb_interaction_network/data/processed/min_npv_15
+        volumeMounts:
+        - mountPath: /ssl-jet-vol
+          name: ssl-jet-vol
+        resources:
+          limits:
+            memory: 64Gi
+            cpu: "8"
+            nvidia.com/gpu: "1"
+          requests:
+            memory: 32Gi
+            cpu: "4"
+            nvidia.com/gpu: "1"
+      volumes:
+      - name: ssl-jet-vol
+        persistentVolumeClaim:
+          claimName: ssl-jet-vol
+      restartPolicy: Never
+  backoffLimit: 5

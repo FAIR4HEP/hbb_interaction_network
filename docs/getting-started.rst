@@ -34,11 +34,11 @@ Or rebuild the images from the Dockerfiles accordingly.
 
    docker build -f Dockerfile.cpu .
 
-Inside of the Docker container, clone the `hbb_interaction_network` git repository and install it.
+Run the image. Inside of the Docker container, clone the `hbb_interaction_network` git repository and install it.
 
 .. code-block:: bash
 
-        git clone git@github.com:FAIR4HEP/hbb_interaction_network.git .
+        git clone git@github.com:FAIR4HEP/hbb_interaction_network.git
         cd hbb_interaction_network
         pip install -e .
 
@@ -49,13 +49,13 @@ To convert the full training dataset
 
 .. code-block:: bash
 
-   python src/data/make_dataset.py --train --batch-size 10000
+   python src/data/make_dataset.py --train
 
 and the testing dataset:
 
 .. code-block:: bash
 
-   python src/data/make_dataset.py --test --batch-size 10000
+   python src/data/make_dataset.py --test
 
 Training
 --------

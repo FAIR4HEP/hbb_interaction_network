@@ -1,0 +1,36 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: Hbb Interaction Network
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+license: MIT
+authors:
+  - given-names: Javier Mauricio
+    family-names: Duarte
+    email: jduarte@ucsd.edu
+    affiliation: University of California San Diego
+    orcid: 'https://orcid.org/0000-0002-5076-7096'
+  - given-names: Billy
+    family-names: Li
+    email: hal113@ucsd.edu
+    affiliation: University of California San Diego
+    orcid: 'https://orcid.org/0000-0003-1642-5794'
+  - given-names: Avik
+    family-names: Roy
+    affiliation: National Center for Supercomputing Applications
+    email: avroy@illinois.edu
+    orcid: 'https://orcid.org/0000-0002-0116-1012'
+  - given-names: Ruike
+    family-names: Zhu
+    email: ruikez2@illinois.edu
+    affiliation: University of Illinois Urbana-Champaign
+    orcid: 'https://orcid.org/0000-0002-4265-2352'
+doi: 10.5281/zenodo.7305173
+repository-code: https://github.com/FAIR4HEP/hbb_interaction_network
+url: https://fair4hep.github.io/hbb_interaction_network
+abstract: |
+  A FAIR AI model for identifying Higgs bosons decaying to bottom quarks.

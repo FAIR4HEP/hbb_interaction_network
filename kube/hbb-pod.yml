@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hbb-pod
+  labels:
+    app: hbb
+spec:
+  containers:
+  - name: container
+    # image: jmduarte/hbb_interaction_network:latest
+    image: gitlab-registry.nrp-nautilus.io/jmduarte/hbb_interaction_network:latest
+    # image: gitlab-registry.nrp-nautilus.io/prp/jupyter-stack/prp:latest
+    command: ["/bin/bash", "-c", "sleep infinity"]
+    resources:
+      limits:
+        nvidia.com/gpu: "1"
+        memory: "12Gi"
+    volumeMounts:
+    - mountPath: /ssl-jet-vol
+      name: ssl-jet-vol
+  volumes:
+    - name: ssl-jet-vol
+      persistentVolumeClaim:
+        claimName: ssl-jet-vol

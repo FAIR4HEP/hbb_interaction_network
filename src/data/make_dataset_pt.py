@@ -29,11 +29,11 @@ def to_np_array(ak_array, maxN=100, pad=0, dtype=float):
 @click.option("--test", is_flag=True, show_default=True, default=False)
 @click.option("--outdir", show_default=True, default=f"{project_dir}/data/processed/")
 @click.option("--max-entries", show_default=True, default=None, type=int)
-@click.option("--min_pT", show_default=True, default=-1, type=int)
-@click.option("--max_pT", show_default=True, default=9999, type=int)
+@click.option("--min_pt", show_default=True, default=-1, type=int)
+@click.option("--max_pt", show_default=True, default=9999, type=int)
 @click.option("--keep-frac", show_default=True, default=1, type=float)
 @click.option("--batch-size", show_default=True, default=None, type=int)
-def main(definitions, train, test, outdir, max_entries, min_pT, max_pT, keep_frac, batch_size):  # noqa: C901
+def main(definitions, train, test, outdir, max_entries, min_pt, max_pt, keep_frac, batch_size):  # noqa: C901
     """Runs data processing scripts to turn raw data from (../raw) into
     cleaned data ready to be analyzed (saved in ../processed).
     """
@@ -73,7 +73,7 @@ def main(definitions, train, test, outdir, max_entries, min_pT, max_pT, keep_fra
                 continue
             arrays = tree.arrays(spectators, library="np", entry_start=k, entry_stop=k + batch_size)
             mask = (
-                (arrays["jet_pt"] >= min_pT) & (arrays["jet_pt"] < max_pT) & (np.random.rand(*arrays["jet_pt"].shape) < keep_frac)
+                (arrays["jet_pt"] >= min_pt) & (arrays["jet_pt"] < max_pt) & (np.random.rand(*arrays["jet_pt"].shape) < keep_frac)
             )
             spec_array = np.expand_dims(np.stack([arrays[spec][mask] for spec in spectators], axis=1), axis=1)
             real_batch_size = spec_array.shape[0]

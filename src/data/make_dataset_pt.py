@@ -29,8 +29,8 @@ def to_np_array(ak_array, maxN=100, pad=0, dtype=float):
 @click.option("--test", is_flag=True, show_default=True, default=False)
 @click.option("--outdir", show_default=True, default=f"{project_dir}/data/processed/")
 @click.option("--max-entries", show_default=True, default=None, type=int)
-@click.option("--min-pT", show_default=True, default=-1, type=int)
-@click.option("--max-pT", show_default=True, default=9999, type=int)
+@click.option("--min_pT", show_default=True, default=-1, type=int)
+@click.option("--max_pT", show_default=True, default=9999, type=int)
 @click.option("--keep-frac", show_default=True, default=1, type=float)
 @click.option("--batch-size", show_default=True, default=None, type=int)
 def main(definitions, train, test, outdir, max_entries, min_pT, max_pT, keep_frac, batch_size):  # noqa: C901

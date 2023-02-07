@@ -73,7 +73,7 @@ def main(definitions, train, test, outdir, max_entries, min_pt, max_pt, keep_fra
                 continue
             arrays = tree.arrays(spectators, library="np", entry_start=k, entry_stop=k + batch_size)
             mask = (
-                (arrays["jet_pt"] >= min_pt) & (arrays["jet_pt"] < max_pt) & (np.random.rand(*arrays["jet_pt"].shape) < keep_frac)
+                (arrays["fj_pt"] >= min_pt) & (arrays["fj_pt"] < max_pt) & (np.random.rand(*arrays["fj_pt"].shape) < keep_frac)
             )
             spec_array = np.expand_dims(np.stack([arrays[spec][mask] for spec in spectators], axis=1), axis=1)
             real_batch_size = spec_array.shape[0]

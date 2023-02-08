@@ -31,9 +31,11 @@ def to_np_array(ak_array, maxN=100, pad=0, dtype=float):
 @click.option("--max-entries", show_default=True, default=None, type=int)
 @click.option("--min-npv", show_default=True, default=-1, type=int)
 @click.option("--max-npv", show_default=True, default=9999, type=int)
+@click.option("--min_pt", show_default=True, default=-1, type=int)
+@click.option("--max_pt", show_default=True, default=9999, type=int)
 @click.option("--keep-frac", show_default=True, default=1, type=float)
 @click.option("--batch-size", show_default=True, default=None, type=int)
-def main(definitions, train, test, outdir, max_entries, min_npv, max_npv, keep_frac, batch_size):  # noqa: C901
+def main(definitions, train, test, outdir, max_entries, min_npv, max_npv, min_pt, max_pt, keep_frac, batch_size):  # noqa: C901
     """Runs data processing scripts to turn raw data from (../raw) into
     cleaned data ready to be analyzed (saved in ../processed).
     """
@@ -72,7 +74,13 @@ def main(definitions, train, test, outdir, max_entries, min_npv, max_npv, keep_f
                 logger.info(f"{outdir}/{dataset}/newdata_{counter}.h5 exists... skipping")
                 continue
             arrays = tree.arrays(spectators, library="np", entry_start=k, entry_stop=k + batch_size)
-            mask = (
+            if min_npv == -1 and max_npv == 9999:
+                # if min_npv and max_npv were not specified, use fj_pt instead
+                mask = (
+                (arrays["fj_pt"] >= min_pt) & (arrays["fj_pt"] < max_pt) & (np.random.rand(*arrays["fj_pt"].shape) < keep_frac)
+            )
+            else:
+                mask = (
                 (arrays["npv"] >= min_npv) & (arrays["npv"] < max_npv) & (np.random.rand(*arrays["npv"].shape) < keep_frac)
             )
             spec_array = np.expand_dims(np.stack([arrays[spec][mask] for spec in spectators], axis=1), axis=1)

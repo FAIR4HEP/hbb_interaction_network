@@ -15,8 +15,8 @@ from torch import nn
 from src.data.h5data import H5Data
 from src.models.InteractionNet import InteractionNetTaggerEmbedding
 
-if torch.cuda.is_available():
-    import setGPU  # noqa: F401
+# if torch.cuda.is_available():
+#     import setGPU  # noqa: F401
 
 project_dir = Path(__file__).resolve().parents[2]
 

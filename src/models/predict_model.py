@@ -6,8 +6,8 @@ from pathlib import Path
 import numpy as np
 import torch
 
-if torch.cuda.is_available():
-    import setGPU  # noqa: F401
+# if torch.cuda.is_available():
+#     import setGPU  # noqa: F401
 
 import tqdm
 import yaml

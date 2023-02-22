@@ -10,10 +10,27 @@ def find_nearest(array, value):
     idx = (np.abs(array - value)).argmin()
     return idx
 
+def main(args):
+    type = args.type
+    if type == "pt":
+        model_name = "gnn_min_pt_psv_best"
+        model_label = "IN(particles, SVs)"
+        plt.figure()
 
-if __name__ == "__main__":
+        model_perf_loc = "models/model_performances"
 
-    model_names = [
+        fpr = np.load(f"{model_perf_loc}/{model_name}_test_fpr_{pu_label}.npy")
+        tpr = np.load(f"{model_perf_loc}/{model_name}_test_tpr_{pu_label}.npy")
+        plabel = (
+            f"{model_label}\n"
+            + f"AUC = {auc(fpr, tpr)*100:.1f}%, "
+            + f"$\epsilon_S(\epsilon_B=10^{{-2}})$ = {tpr[find_nearest(fpr, 0.01)]*100:.1f}%"  # noqa: W605
+        )
+        plt.plot(tpr, fpr, label=plabel, ls=line)
+
+
+    else:
+        model_names = [
         "gnn_max_npv_15_best",
         "gnn_max_npv_15_just_tracks_best",
         "gnn_max_npv_15_just_svs_best",
@@ -68,3 +85,19 @@ if __name__ == "__main__":
     plt.ylim([1e-5, 100])
     plt.savefig(f"roc_{pu_label}.pdf")
     plt.savefig(f"roc_{pu_label}.png")
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--type",
+        default="pt",
+        help="The feature to plot. pt or psv",
+    )
+
+
+    
+
+
+
+    args = parser.parse_args()
+    main(args)

@@ -155,8 +155,6 @@ def main(args, evaluating_test=True):  # noqa: C901
                 out_test = model(trainingv, trainingv_sv)
         out_test = out_test.cpu().data.numpy()
         out_test = softmax(out_test, axis=1)
-        prediction = out_test
-        target_test = target  #TODO: check whether we need this
         if j == 0:
             prediction = out_test
             target_test = target

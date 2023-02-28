@@ -1,3 +1,4 @@
+from datetime import datetime
 import argparse
 import glob
 import os
@@ -177,16 +178,27 @@ def main(args, evaluating_test=True):  # noqa: C901
     acc = accuracy_score(target_test[idx][:, 1], prediction[idx][:, 1] >= 0.5)
     print("Accuray 1: ", acc)
 
+    eval_path = args.eval_path
+
+    # pu_label for npv
     low_pu = "max_npv_15" in args.save_path
+    high_pu = "min_npv_15" in args.save_path
 
     if low_pu:
         pu_label = "max_npv_15"
-    else:
+    elif high_pu:
         pu_label = "min_npv_15"
+    else:
+        pu_label = eval_path
 
     fpr, tpr, _ = roc_curve(target_test[:, 1], prediction[:, 1])
 
-    model_perf_loc = f"{args.outdir}/model_performances"
+    # Make sure to have created a subdirectory for model performance in the job yaml, like 
+    # cd models/model_performances && mkdir max_pt
+    # where max_pt is the eval_path
+
+    # save to subdirectory created above
+    model_perf_loc = f"{args.outdir}/model_performances/" + eval_path  
     os.makedirs(model_perf_loc, exist_ok=True)
     model_name = Path(args.load_path).stem
 
@@ -211,6 +223,13 @@ if __name__ == "__main__":
         action="store",
         default=f"{project_dir}/data/processed/test/",
         help="Input directory with testing files",
+    )
+    parser.add_argument(
+        "--eval-path",
+        type=str,
+        action="store",
+        default=str(datetime.now()),
+        help="the evaluation results will be saved at model_performances/eval-path",
     )
     parser.add_argument(
         "--outdir",

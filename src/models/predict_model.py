@@ -370,4 +370,5 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-    main(args, True)
+    evaluating_test = not args.output_pred
+    main(args, evaluating_test)

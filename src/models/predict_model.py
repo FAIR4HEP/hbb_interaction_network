@@ -193,24 +193,33 @@ def main(args, evaluating_test=True):  # noqa: C901
 
     fpr, tpr, _ = roc_curve(target_test[:, 1], prediction[:, 1])
 
-    # Make sure to have created a subdirectory for model performance in the job yaml, like 
-    # cd models/model_performances && mkdir max_pt
-    # where max_pt is the eval_path
+    if args.output_pred:
+        # only save the predicted and true labels
+        model_pred_loc = f"{args.outdir}/model_predictions/" + eval_path
+        os.makedirs(model_pred_loc, exist_ok=True)
+        model_name = Path(args.load_path).stem
+        np.save(
+            f"{model_pred_loc}/{model_name}_pred_{pu_label}.npy",
+            prediction,
+        )
+        np.save(
+            f"{model_pred_loc}/{model_name}_true_labels_{pu_label}.npy",
+            target_test,
+        )
+    else:
+        # save fpr and tpr for roc curve
+        model_perf_loc = f"{args.outdir}/model_performances/" + eval_path  
+        os.makedirs(model_perf_loc, exist_ok=True)
+        model_name = Path(args.load_path).stem
 
-    # save to subdirectory created above
-    model_perf_loc = f"{args.outdir}/model_performances/" + eval_path  
-    os.makedirs(model_perf_loc, exist_ok=True)
-    model_name = Path(args.load_path).stem
-
-    np.save(
-        f"{model_perf_loc}/{model_name}_test_fpr_{pu_label}.npy",
-        fpr,
-    )
-    np.save(
-        f"{model_perf_loc}/{model_name}_test_tpr_{pu_label}.npy",
-        tpr,
-    )
-
+        np.save(
+            f"{model_perf_loc}/{model_name}_test_fpr_{pu_label}.npy",
+            fpr,
+        )
+        np.save(
+            f"{model_perf_loc}/{model_name}_test_tpr_{pu_label}.npy",
+            tpr,
+        )
 
 if __name__ == "__main__":
     """This is executed when run from the command line"""
@@ -352,6 +361,12 @@ if __name__ == "__main__":
         "--finetune-mlp",
         default="2",
         help="Size and number of layers of the MLP finetuning head",
+    )
+    parser.add_argument(
+        "--output_pred",
+        action="store_true",
+        default=False,
+        help="Whether to output predictions of the model",
     )
 
     args = parser.parse_args()

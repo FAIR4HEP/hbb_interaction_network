@@ -206,20 +206,20 @@ def main(args, evaluating_test=True):  # noqa: C901
             f"{model_pred_loc}/{model_name}_true_labels_{pu_label}.npy",
             target_test,
         )
-    else:
-        # save fpr and tpr for roc curve
-        model_perf_loc = f"{args.outdir}/model_performances/" + eval_path  
-        os.makedirs(model_perf_loc, exist_ok=True)
-        model_name = Path(args.load_path).stem
+    
+    # save fpr and tpr for roc curve
+    model_perf_loc = f"{args.outdir}/model_performances/" + eval_path  
+    os.makedirs(model_perf_loc, exist_ok=True)
+    model_name = Path(args.load_path).stem
 
-        np.save(
-            f"{model_perf_loc}/{model_name}_test_fpr_{pu_label}.npy",
-            fpr,
-        )
-        np.save(
-            f"{model_perf_loc}/{model_name}_test_tpr_{pu_label}.npy",
-            tpr,
-        )
+    np.save(
+        f"{model_perf_loc}/{model_name}_test_fpr_{pu_label}.npy",
+        fpr,
+    )
+    np.save(
+        f"{model_perf_loc}/{model_name}_test_tpr_{pu_label}.npy",
+        tpr,
+    )
 
 if __name__ == "__main__":
     """This is executed when run from the command line"""

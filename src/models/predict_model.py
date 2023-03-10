@@ -114,7 +114,7 @@ def main(args, evaluating_test=True):  # noqa: C901
     print(f"Parameters = {sum(p.numel() for p in model.parameters() if p.requires_grad)}")
 
     # test process
-
+    eval_path = args.eval_path
     iterator = data_test.generate_data()
     total_ = int(n_test / batch_size)
     pbar = tqdm.tqdm(iterator, total=total_)
@@ -224,7 +224,7 @@ def main(args, evaluating_test=True):  # noqa: C901
     acc = accuracy_score(target_test[idx][:, 1], prediction[idx][:, 1] >= 0.5)
     print("Accuray 1: ", acc)
 
-    eval_path = args.eval_path
+    
 
     # pu_label for npv
     low_pu = "max_npv_15" in args.save_path

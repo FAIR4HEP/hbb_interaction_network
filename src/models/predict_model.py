@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 import argparse
 import glob
@@ -6,6 +7,8 @@ from pathlib import Path
 
 import numpy as np
 import torch
+
+import h5py
 
 # if torch.cuda.is_available():
 #     import setGPU  # noqa: F401
@@ -30,9 +33,12 @@ n_targets = len(defn["reduced_labels"])  # number of classes
 spectators = defn["spectators"]
 params = defn["features_2"]
 params_sv = defn["features_3"]
-
+spectators = defn["spectators"]
+labels = defn["labels"]
+n_feature_sets = defn["n_feature_sets"]
 
 def main(args, evaluating_test=True):  # noqa: C901
+    logger = logging.getLogger(__name__)
 
     device = args.device
     batch_size = args.batch_size
@@ -108,6 +114,7 @@ def main(args, evaluating_test=True):  # noqa: C901
     print(f"Parameters = {sum(p.numel() for p in model.parameters() if p.requires_grad)}")
 
     # test process
+
     iterator = data_test.generate_data()
     total_ = int(n_test / batch_size)
     pbar = tqdm.tqdm(iterator, total=total_)
@@ -155,6 +162,45 @@ def main(args, evaluating_test=True):  # noqa: C901
                 out_test = model(trainingv, trainingv_sv)
         out_test = out_test.cpu().data.numpy()
         out_test = softmax(out_test, axis=1)
+
+        if args.save_h5:
+            # save the model
+            # save the feature_arrays, target_array, and spec_array to h5 file
+            model_pred_loc = f"{args.outdir}/model_predictions/" + eval_path
+            os.makedirs(model_pred_loc, exist_ok=True)
+            model_name = Path(args.load_path).stem
+            real_batch_size = len(target)
+            # TODO: figure out what feature_arrays is in this file
+            feature_arrays = sub_X
+            target_array = out_test
+            spec_array = spectator
+            with h5py.File(f"{model_pred_loc}/newdata_{j}.h5", "w") as h5:
+                logger.info(f"creating {h5.filename} h5 file with {real_batch_size} events")
+                feature_data = h5.create_group(f"{dataset}ing_subgroup")
+                target_data = h5.create_group("target_subgroup")
+                spec_data = h5.create_group("spectator_subgroup")
+                for j in range(n_feature_sets):
+                    feature_data.create_dataset(
+                        f"{dataset}ing_{j}",
+                        data=feature_arrays[f"features_{j}"].astype("float32"),
+                    )
+                    np.save(
+                        f"{model_pred_loc}/{dataset}_{j}_features_{j}.npy",
+                        feature_arrays[f"features_{j}"].astype("float32"),
+                    )  # save the features
+                target_data.create_dataset("target", data=target_array.astype("float32"))
+                np.save(
+                    f"{model_pred_loc}/{dataset}_{j}_truth.npy",
+                    target_array.astype("float32"),
+                )  # saving the labels
+                spec_data.create_dataset("spectators", data=spec_array.astype("float32"))
+                np.save(
+                    f"{model_pred_loc}/{dataset}_{j}_spectators.npy",
+                    spec_array.astype("float32"),
+                )  # saving the spectators
+                h5.close()  # close the h5 file
+                print(f"saved {h5.filename} h5 file with {real_batch_size} events")
+                    
         if j == 0:
             prediction = out_test
             target_test = target
@@ -194,7 +240,7 @@ def main(args, evaluating_test=True):  # noqa: C901
     fpr, tpr, _ = roc_curve(target_test[:, 1], prediction[:, 1])
 
     if args.output_pred:
-        # only save the predicted and true labels
+        # save the predicted and true labels
         model_pred_loc = f"{args.outdir}/model_predictions/" + eval_path
         os.makedirs(model_pred_loc, exist_ok=True)
         model_name = Path(args.load_path).stem
@@ -220,6 +266,8 @@ def main(args, evaluating_test=True):  # noqa: C901
         f"{model_perf_loc}/{model_name}_test_tpr_{pu_label}.npy",
         tpr,
     )
+
+
 
 if __name__ == "__main__":
     """This is executed when run from the command line"""
@@ -367,6 +415,12 @@ if __name__ == "__main__":
         action="store_true",
         default=False,
         help="Whether to output predictions of the model",
+    )
+    parser.add_argument(
+        "--save_h5",
+        action="store_true",
+        default=False,
+        help="Whether to save output of the model in h5 format for later training",
     )
 
     args = parser.parse_args()

@@ -182,11 +182,11 @@ def main(args, evaluating_test=True):  # noqa: C901
                 for j in range(n_feature_sets):
                     feature_data.create_dataset(
                         f"{dataset}ing_{j}",
-                        data=feature_arrays[f"features_{j}"].astype("float32"),
+                        data=feature_arrays[j].astype("float32"),
                     )
                     np.save(
                         f"{model_pred_loc}/{dataset}_{j}_features_{j}.npy",
-                        feature_arrays[f"features_{j}"].astype("float32"),
+                        feature_arrays[j].astype("float32"),
                     )  # save the features
                 target_data.create_dataset("target", data=target_array.astype("float32"))
                 np.save(

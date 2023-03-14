@@ -201,7 +201,7 @@ def main(args, evaluating_test=True):  # noqa: C901
                 print(f"saved {h5.filename} h5 file with {real_batch_size} events")
                 h5.close()  # close the h5 file
                 
-                    
+        print(f"j: {j}")
         if j == 0:
             prediction = out_test
             target_test = target

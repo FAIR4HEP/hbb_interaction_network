@@ -198,8 +198,9 @@ def main(args, evaluating_test=True):  # noqa: C901
                     f"{model_pred_loc}/{dataset}_{j}_spectators.npy",
                     spec_array.astype("float32"),
                 )  # saving the spectators
-                h5.close()  # close the h5 file
                 print(f"saved {h5.filename} h5 file with {real_batch_size} events")
+                h5.close()  # close the h5 file
+                
                     
         if j == 0:
             prediction = out_test

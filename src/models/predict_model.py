@@ -179,23 +179,23 @@ def main(args, evaluating_test=True):  # noqa: C901
                 feature_data = h5.create_group(f"{dataset}ing_subgroup")
                 target_data = h5.create_group("target_subgroup")
                 spec_data = h5.create_group("spectator_subgroup")
-                for j in range(n_feature_sets):
+                for i in range(n_feature_sets):
                     feature_data.create_dataset(
-                        f"{dataset}ing_{j}",
-                        data=feature_arrays[j].astype("float32"),
+                        f"{dataset}ing_{i}",
+                        data=feature_arrays[i].astype("float32"),
                     )
                     np.save(
-                        f"{model_pred_loc}/{dataset}_{j}_features_{j}.npy",
-                        feature_arrays[j].astype("float32"),
+                        f"{model_pred_loc}/{dataset}_{j}_features_{i}.npy",
+                        feature_arrays[i].astype("float32"),
                     )  # save the features
                 target_data.create_dataset("target", data=target_array.astype("float32"))
                 np.save(
-                    f"{model_pred_loc}/{dataset}_{j}_truth.npy",
+                    f"{model_pred_loc}/{dataset}_{i}_truth.npy",
                     target_array.astype("float32"),
                 )  # saving the labels
                 spec_data.create_dataset("spectators", data=spec_array.astype("float32"))
                 np.save(
-                    f"{model_pred_loc}/{dataset}_{j}_spectators.npy",
+                    f"{model_pred_loc}/{dataset}_{i}_spectators.npy",
                     spec_array.astype("float32"),
                 )  # saving the spectators
                 print(f"saved {h5.filename} h5 file with {real_batch_size} events")

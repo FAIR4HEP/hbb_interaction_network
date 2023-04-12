@@ -20,7 +20,7 @@ spec:
             python -m src.data.make_dataset --test --batch-size 200000 --min-npv 15 --outdir /ssl-jet-vol-v2/hbb_interaction_network/data/processed/min_npv_15
         volumeMounts:
         - mountPath: /ssl-jet-vol-v2
-          name: ssl-jet-vol
+          name: ssl-jet-vol-v2
         resources:
           limits:
             memory: 64Gi

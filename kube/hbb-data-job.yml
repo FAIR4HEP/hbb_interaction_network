@@ -17,9 +17,9 @@ spec:
             git clone https://github.com/ucsd-hep-ex/hbb_interaction_network --single-branch -b vicreg &&
             cd hbb_interaction_network &&
             pip install -e . &&
-            python -m src.data.make_dataset --test --batch-size 200000 --min-npv 15 --outdir /ssl-jet-vol/hbb_interaction_network/data/processed/min_npv_15
+            python -m src.data.make_dataset --test --batch-size 200000 --min-npv 15 --outdir /ssl-jet-vol-v2/hbb_interaction_network/data/processed/min_npv_15
         volumeMounts:
-        - mountPath: /ssl-jet-vol
+        - mountPath: /ssl-jet-vol-v2
           name: ssl-jet-vol
         resources:
           limits:
@@ -31,8 +31,8 @@ spec:
             cpu: "4"
             nvidia.com/gpu: "1"
       volumes:
-      - name: ssl-jet-vol
+      - name: ssl-jet-vol-v2
         persistentVolumeClaim:
-          claimName: ssl-jet-vol
+          claimName: ssl-jet-vol-v2
       restartPolicy: Never
   backoffLimit: 5

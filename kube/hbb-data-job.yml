@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: hbb-job-test-min-npv-15
+  name: hbb-job-train-min-npv-15
   labels:
     jobgroup: hbb-job
 spec:

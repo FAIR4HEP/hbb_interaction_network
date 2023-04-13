@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: hbb-job-train-min-npv-15
+  name: hbb-job-train-min-pT-1500
   labels:
     jobgroup: hbb-job
 spec:
@@ -17,7 +17,7 @@ spec:
             git clone https://github.com/ucsd-hep-ex/hbb_interaction_network --single-branch -b vicreg &&
             cd hbb_interaction_network &&
             pip install -e . &&
-            python -m src.data.make_dataset --train --batch-size 200000 --min-npv 15 --outdir /ssl-jet-vol-v2/hbb_interaction_network/data/processed/min_npv_15
+            python -m src.data.make_dataset --train --batch-size 200000 --min_pt 1500 --outdir /ssl-jet-vol-v2/hbb_interaction_network/data/processed/min_pT_1500
         volumeMounts:
         - mountPath: /ssl-jet-vol-v2
           name: ssl-jet-vol-v2

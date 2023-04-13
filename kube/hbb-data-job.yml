@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: hbb-job-train-min-pT-1500
+  name: hbb-job-train-min-pt-1500
   labels:
     jobgroup: hbb-job
 spec:

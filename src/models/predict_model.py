@@ -119,6 +119,7 @@ def main(args, evaluating_test=True):  # noqa: C901
     total_ = int(n_test / batch_size)
     pbar = tqdm.tqdm(iterator, total=total_)
     for j, element in enumerate(pbar):
+        j += 1
         (sub_X, sub_Y, sub_Z) = element
         training = sub_X[2]
         training_sv = sub_X[3]
@@ -162,52 +163,68 @@ def main(args, evaluating_test=True):  # noqa: C901
                 out_test = model(trainingv, trainingv_sv)
         out_test = out_test.cpu().data.numpy()
         out_test = softmax(out_test, axis=1)
+        if args.argmax:
+            out_test = np.argmax(out_test, axis=1)
 
-        if args.save_h5:
-            # save the model
-            # save the feature_arrays, target_array, and spec_array to h5 file
-            model_pred_loc = f"{args.outdir}/model_predictions/" + eval_path
-            os.makedirs(model_pred_loc, exist_ok=True)
-            model_name = Path(args.load_path).stem
-            real_batch_size = len(target)
-            # TODO: figure out what feature_arrays is in this file
-            feature_arrays = sub_X
-            target_array = out_test
-            spec_array = spectator
-            with h5py.File(f"{model_pred_loc}/newdata_{j}.h5", "w") as h5:
-                logger.info(f"creating {h5.filename} h5 file with {real_batch_size} events")
-                feature_data = h5.create_group(f"{dataset}ing_subgroup")
-                target_data = h5.create_group("target_subgroup")
-                spec_data = h5.create_group("spectator_subgroup")
-                for i in range(n_feature_sets):
-                    feature_data.create_dataset(
-                        f"{dataset}ing_{i}",
-                        data=feature_arrays[i].astype("float32"),
-                    )
-                    np.save(
-                        f"{model_pred_loc}/{dataset}_{j}_features_{i}.npy",
-                        feature_arrays[i].astype("float32"),
-                    )  # save the features
-                target_data.create_dataset("target", data=target_array.astype("float32"))
-                np.save(
-                    f"{model_pred_loc}/{dataset}_{i}_truth.npy",
-                    target_array.astype("float32"),
-                )  # saving the labels
-                spec_data.create_dataset("spectators", data=spec_array.astype("float32"))
-                np.save(
-                    f"{model_pred_loc}/{dataset}_{i}_spectators.npy",
-                    spec_array.astype("float32"),
-                )  # saving the spectators
-                print(f"saved {h5.filename} h5 file with {real_batch_size} events")
-                h5.close()  # close the h5 file
-                
-        print(f"j: {j}")
-        if j == 0:
+        if j == 1:
+            # initialize the arrays
             prediction = out_test
             target_test = target
+            feature_arrays = sub_X
+            target_array = prediction
+            spec_array = spectator
         else:
             prediction = np.concatenate((prediction, out_test), axis=0)
             target_test = np.concatenate((target_test, target))
+        
+        if args.save_h5:
+            if j % 500 == 0 or j == total_:
+                # save the model
+                # save the feature_arrays, target_array, and spec_array to h5 file
+                model_pred_loc = f"{args.outdir}/model_predictions/" + eval_path
+                os.makedirs(model_pred_loc, exist_ok=True)
+                model_name = Path(args.load_path).stem
+                real_batch_size = len(target)
+                feature_arrays = sub_X
+                target_array = out_test
+                spec_array = spectator
+                with h5py.File(f"{model_pred_loc}/newdata_{j}.h5", "w") as h5:
+                    logger.info(f"creating {h5.filename} h5 file with {real_batch_size} events")
+                    feature_data = h5.create_group(f"{dataset}ing_subgroup")
+                    target_data = h5.create_group("target_subgroup")
+                    spec_data = h5.create_group("spectator_subgroup")
+                    for i in range(n_feature_sets):
+                        feature_data.create_dataset(
+                            f"{dataset}ing_{i}",
+                            data=feature_arrays[i].astype("float32"),
+                        )
+                        np.save(
+                            f"{model_pred_loc}/{dataset}_{j}_features_{i}.npy",
+                            feature_arrays[i].astype("float32"),
+                        )  # save the features
+                    target_data.create_dataset("target", data=target_array.astype("float32"))
+                    np.save(
+                        f"{model_pred_loc}/{dataset}_{i}_truth.npy",
+                        target_array.astype("float32"),
+                    )  # saving the labels
+                    spec_data.create_dataset("spectators", data=spec_array.astype("float32"))
+                    np.save(
+                        f"{model_pred_loc}/{dataset}_{i}_spectators.npy",
+                        spec_array.astype("float32"),
+                    )  # saving the spectators
+                    print(f"saved {h5.filename} h5 file with {real_batch_size} events")
+                    h5.close()  # close the h5 file
+                # re-initialize the arrays
+                feature_arrays = sub_X
+                target_array = prediction
+                spec_array = spectator
+            else:
+                # Don't save the model, just add to the arrays.
+                feature_arrays = [np.concatenate((feature_arrays[i], sub_X[i]), axis=0) for i in range(n_feature_sets)]
+                target_array = np.concatenate((target_array, out_test), axis=0)
+                spec_array = np.concatenate((spec_array, spectator), axis=0)
+ 
+        
 
     auc = roc_auc_score(target_test[:, 1], prediction[:, 1])
     print("AUC: ", auc)
@@ -422,6 +439,12 @@ if __name__ == "__main__":
         action="store_true",
         default=False,
         help="Whether to save output of the model in h5 format for later training",
+    )
+    parser.add_argument(
+        "--argmax",
+        action="store_true",
+        default=False,
+        help="Whether to save the argmax of model output",
     )
 
     args = parser.parse_args()

@@ -216,7 +216,7 @@ def main(args, evaluating_test=True):  # noqa: C901
                     h5.close()  # close the h5 file
                 # re-initialize the arrays
                 feature_arrays = sub_X
-                target_array = prediction
+                target_array = out_test
                 spec_array = spectator
             else:
                 if j != 1:

@@ -184,11 +184,11 @@ def main(args, evaluating_test=True):  # noqa: C901
                 model_pred_loc = f"{args.outdir}/model_predictions/" + eval_path
                 os.makedirs(model_pred_loc, exist_ok=True)
                 model_name = Path(args.load_path).stem
-                real_batch_size = len(target)
                 feature_arrays = [np.concatenate((feature_arrays[i], sub_X[i]), axis=0) for i in range(n_feature_sets)]
                 target_array = np.concatenate((target_array, out_test), axis=0)
                 spec_array = np.concatenate((spec_array, spectator), axis=0)
-                with h5py.File(f"{model_pred_loc}/newdata_{j}.h5", "w") as h5:
+                real_batch_size = len(target_array)
+                with h5py.File(f"{model_pred_loc}/newdata_{int(np.ceil(j / 500))}.h5", "w") as h5:
                     logger.info(f"creating {h5.filename} h5 file with {real_batch_size} events")
                     feature_data = h5.create_group(f"{dataset}ing_subgroup")
                     target_data = h5.create_group("target_subgroup")
@@ -199,17 +199,17 @@ def main(args, evaluating_test=True):  # noqa: C901
                             data=feature_arrays[i].astype("float32"),
                         )
                         np.save(
-                            f"{model_pred_loc}/{dataset}_{j}_features_{i}.npy",
+                            f"{model_pred_loc}/{dataset}_{int(np.ceil(j / 500))}_features_{i}.npy",
                             feature_arrays[i].astype("float32"),
                         )  # save the features
                     target_data.create_dataset("target", data=target_array.astype("float32"))
                     np.save(
-                        f"{model_pred_loc}/{dataset}_{i}_truth.npy",
+                        f"{model_pred_loc}/{dataset}_{int(np.ceil(j / 500))}_truth.npy",
                         target_array.astype("float32"),
                     )  # saving the labels
                     spec_data.create_dataset("spectators", data=spec_array.astype("float32"))
                     np.save(
-                        f"{model_pred_loc}/{dataset}_{i}_spectators.npy",
+                        f"{model_pred_loc}/{dataset}_{int(np.ceil(j / 500))}_spectators.npy",
                         spec_array.astype("float32"),
                     )  # saving the spectators
                     print(f"saved {h5.filename} h5 file with {real_batch_size} events")

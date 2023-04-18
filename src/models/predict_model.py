@@ -185,9 +185,9 @@ def main(args, evaluating_test=True):  # noqa: C901
                 os.makedirs(model_pred_loc, exist_ok=True)
                 model_name = Path(args.load_path).stem
                 real_batch_size = len(target)
-                feature_arrays = sub_X
-                target_array = out_test
-                spec_array = spectator
+                feature_arrays = [np.concatenate((feature_arrays[i], sub_X[i]), axis=0) for i in range(n_feature_sets)]
+                target_array = np.concatenate((target_array, out_test), axis=0)
+                spec_array = np.concatenate((spec_array, spectator), axis=0)
                 with h5py.File(f"{model_pred_loc}/newdata_{j}.h5", "w") as h5:
                     logger.info(f"creating {h5.filename} h5 file with {real_batch_size} events")
                     feature_data = h5.create_group(f"{dataset}ing_subgroup")
@@ -219,10 +219,12 @@ def main(args, evaluating_test=True):  # noqa: C901
                 target_array = prediction
                 spec_array = spectator
             else:
-                # Don't save the model, just add to the arrays.
-                feature_arrays = [np.concatenate((feature_arrays[i], sub_X[i]), axis=0) for i in range(n_feature_sets)]
-                target_array = np.concatenate((target_array, out_test), axis=0)
-                spec_array = np.concatenate((spec_array, spectator), axis=0)
+                if j != 1:
+                    # Don't save the model, just add to the arrays.
+                    feature_arrays = [np.concatenate((feature_arrays[i], sub_X[i]), axis=0) for i in range(n_feature_sets)]
+                    target_array = np.concatenate((target_array, out_test), axis=0)
+                    spec_array = np.concatenate((spec_array, spectator), axis=0)
+                    print(f"j = {j}, added {len(target)} events to the arrays")
  
         
 

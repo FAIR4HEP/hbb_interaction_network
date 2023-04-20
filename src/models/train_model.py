@@ -322,7 +322,7 @@ if __name__ == "__main__":
         help="Size and number of layers of the MLP expander head",
     )
     parser.add_argument(
-        "--train-path_1",
+        "--train-path-1",
         type=str,
         action="store",
         dest="train_path_1",
@@ -330,7 +330,7 @@ if __name__ == "__main__":
         help="Input directory for training files",
     )
     parser.add_argument(
-        "--train-path_2",
+        "--train-path-2",
         type=str,
         action="store",
         dest="train_path_2",

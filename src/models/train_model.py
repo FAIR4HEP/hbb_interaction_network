@@ -40,12 +40,27 @@ def main(args):  # noqa: C901
 
     device = args.device
 
-    files = glob.glob(os.path.join(args.train_path, "newdata_*.h5"))
-    # take first 10% of files for validation
-    # n_val should be 5 for full dataset
-    n_val = max(1, int(0.1 * len(files)))
-    files_val = files[:n_val]
-    files_train = files[n_val:]
+    files_1 = glob.glob(os.path.join(args.train_path_1, "newdata_*.h5"))
+    if args.train_path_2:
+        files_2 = glob.glob(os.path.join(args.train_path_2, "newdata_*.h5"))
+        # set training and validation files separately for each dataset
+        n_val_1 = max(1, int(0.1 * len(files_1)))
+        n_val_2 = max(1, int(0.1 * len(files_2)))
+
+        files1_val = files_1[:n_val_1]
+        files1_train = files_1[n_val_1:]
+
+        files2_val = files_2[:n_val_2]
+        files2_train = files_2[n_val_2:]
+        files_val = files1_val + files2_val
+        files_train = files1_train + files2_train
+    else:
+        # take first 10% of files for validation
+        # n_val should be 5 for full dataset
+        n_val = max(1, int(0.1 * len(files_1)))
+        files_val = files_1[:n_val]
+        files_train = files_1[n_val:]
+    
 
     outdir = args.outdir
     just_svs = args.just_svs
@@ -155,6 +170,8 @@ def main(args):  # noqa: C901
 
     softmax = torch.nn.Softmax(dim=1)
     import time
+    loss_train_all = []
+    loss_val_all = []
 
     for m in range(n_epochs):
         print(f"Epoch {m}\n")
@@ -251,6 +268,9 @@ def main(args):  # noqa: C901
             vicreg_model = Path(args.load_vicreg_path).stem
             torch.save(vicreg.state_dict(), f"{model_loc}/{vicreg_model}_finetune_last.pth")
         torch.save(model.state_dict(), f"{model_loc}/{model_type}_{label}_last.pth")
+
+        loss_train_all.append(l_training)
+        loss_val_all.append(l_val)
         if l_val < l_val_best:
             print("new best model")
             l_val_best = l_val
@@ -277,6 +297,15 @@ def main(args):  # noqa: C901
 
         acc_val = accuracy_score(val_targetv[:, 0], predicted[:, 0] > 0.5)
         print(f"Validation Accuracy: {acc_val}")
+    # save all losses
+    np.save(
+            f"{model_perf_loc}/{label}_loss_train_all.npy",
+            np.array(loss_train_all),
+        )
+    np.save(
+        f"{model_perf_loc}/{label}_loss_val_all.npy",
+        np.array(loss_val_all),
+    )
 
 
 if __name__ == "__main__":
@@ -293,12 +322,20 @@ if __name__ == "__main__":
         help="Size and number of layers of the MLP expander head",
     )
     parser.add_argument(
-        "--train-path",
+        "--train-path_1",
         type=str,
         action="store",
-        dest="train_path",
+        dest="train_path_1",
         default=f"{project_dir}/data/processed/train/",
         help="Input directory for training files",
+    )
+    parser.add_argument(
+        "--train-path_2",
+        type=str,
+        action="store",
+        dest="train_path_2",
+        default=None,
+        help="(optional) Second input directory for training files",
     )
     parser.add_argument(
         "--outdir",

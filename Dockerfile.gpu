@@ -20,6 +20,7 @@ ENV LD_LIBRARY_PATH /opt/xrootd/lib
 
 USER $NB_USER
 RUN mamba install xrootd
+RUN mamba install -c pyg pyg
 COPY requirements_gpu.txt .
 RUN pip install -r requirements_gpu.txt
 
